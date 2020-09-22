@@ -47,7 +47,7 @@ optionsgui = {
           desc = {
             order = 2,
             type = "description",
-            name = "The following chat options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
+            name = "The following chat options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
           },
           raid = {
             order = 10,
@@ -135,12 +135,26 @@ optionsgui = {
             desc = "These players will move to the front of the summon list when they request a summon",
             width = "full",
             type = "input",
-            multiline = 15,
+            multiline = 8,
             set = function(info, val)
               SteaSummonSave.prioplayers = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
             end,
             get = function(info)
               return addonData.util:tableToMultiLine(SteaSummonSave.prioplayers)
+            end
+          },
+          last = {
+            order = 2,
+            name = "Players to summon last. Some people should just be nicer. One player per line.",
+            desc = "These players will move to the back of the summon list and stay there",
+            width = "full",
+            type = "input",
+            multiline = 8,
+            set = function(info, val)
+              SteaSummonSave.shitlist = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
+            end,
+            get = function(info)
+              return addonData.util:tableToMultiLine(SteaSummonSave.shitlist)
             end
           }
         },

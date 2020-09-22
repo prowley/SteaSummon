@@ -45,6 +45,13 @@ local chat = {
           if addonData.settings:debug() then offon = "ON" end
           cprint("Debugging: ", offon)
         end
+
+        if cmd == "add" then
+          -- add someone to list
+          if args ~= "" then
+            addonData.summon:addWaiting(args)
+          end
+        end
       end
     end
 

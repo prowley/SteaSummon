@@ -32,6 +32,12 @@ settings = {
     if SteaSummonSave == nil or SteaSummonSave.prioplayers == nil then
       self:reset()
     end
+
+    -- init settings that have been added since release
+
+    if SteaSummonSave.shitlist == nil then
+      SteaSummonSave.shitlist = {[1]="Evolym"}
+    end
   end,
 
   reset = function(self)
@@ -41,6 +47,7 @@ settings = {
       SteaSummonSave.show = 2
       SteaSummonSave.updates = true
       SteaSummonSave.prioplayers = {[1]="Stea"}
+      SteaSummonSave.shitlist = {[1]="Evolym"}
       SteaSummonSave.warlocks = true
       SteaSummonSave.raidchat = "Summoning %p"
       SteaSummonSave.whisperchat = "Summoning you to %l in %z"
@@ -51,19 +58,28 @@ settings = {
   findSummonWord = function(self, phrase)
     for k,v in pairs(SteaSummonSave.summonWords) do
       if v == phrase then
-        return true
+        return k
       end
     end
-    return false
+    return nil
   end,
 
   findPrioPlayer = function(self, player)
     for k,v in pairs(SteaSummonSave.prioplayers) do
       if v == player then
-        return true
+        return k
       end
     end
-    return false
+    return nil
+  end,
+
+  findShitlistPlayer = function(self, player)
+    for k,v in pairs(SteaSummonSave.shitlist) do
+      if v == player then
+        return k
+      end
+    end
+    return nil
   end,
 
   debug = function(bug)

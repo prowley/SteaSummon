@@ -1,13 +1,19 @@
 local addonName, addonData = ...
 
+local cw_spells = {} -- current summon spells being cast, module level because accessed in a callback
+
 local summon = {
   waiting = {}, -- the summon list
   numwaiting = 0, -- the summon list length
   hasSummoned = false, -- when true we believe you more
   tainted = false, -- indicates player has cancelled something that's nothing to do with them
+  myLocation = "", -- the location player is
+  myZone = "", -- the zone player is
   location = "", -- area of zone summons are going to
   zone = "", -- the zone summons are going to
+  summoningPlayer = "", -- the player currently being summoned
 
+  ---------------------------------
   addWaiting = function(self, player)
     if self:findWaitingPlayerIdx(player) then
       return
@@ -15,8 +21,8 @@ local summon = {
     db("Making some space for ", player)
     self.numwaiting = self.numwaiting + 1
 
-    -- priotorites
-    local inserted = false -- for edge cases
+    -- priorities
+    local inserted = false
     if SteaSummonSave.warlocks and UnitClass(player) == "Warlock" then
       db("Warlock " .. player .. " gets prio")
       table.insert(self.waiting, 1, {player, 0, "requested"})
@@ -29,18 +35,27 @@ local summon = {
           inserted = true
         end
       end
+    elseif addonData.settings:findShitlistPlayer(player) ~= nil then
+      self.waiting[self.numwaiting] = {player, 0, "requested"}
+      inserted = true
     end
 
     if not inserted then
-      self.waiting[self.numwaiting] = {player, 0, "requested"}
+      local i = self.numwaiting
+      while i > 1 and addonData.settings:findShitlistPlayer(self.waiting[i-1][1]) do
+        db(self.waiting[i][1], " on shitlist, finding a better spot ")
+        i = i - 1
+      end
+      table.insert(self.waiting, i, {player, 0, "requested"})
     end
 
     db(player .. " added to waiting list")
     self:showSummons()
   end,
 
+  ---------------------------------
   tick = function(self)
-    -- update timers
+    --- update timers
     -- yea this is dumb, but time doesnt really work in wow
     -- so we count (rough) second ticks for how long someone has been waiting
     -- and need to update each individually (a global would wrap)
@@ -51,8 +66,8 @@ local summon = {
       self.waiting[i] = {player, time + 1, status}
     end
 
-    if (self.hasSummoned) then -- avoids warlocks in rando places removing people from list
-      -- detect arriving players
+    --- detect arriving players
+    if (self.hasSummoned) then -- avoids warlocks in random places removing people from list
       local players = {}
       for i, wait in pairs(self.waiting) do
         local player = wait[1]
@@ -68,11 +83,17 @@ local summon = {
       end
     end
 
+    --- update our location
+    self:setCurrentLocation()
+
+    --- update display
     self:showSummons()
   end,
 
+  ---------------------------------
   getWaiting = function(self) return self.waiting end,
 
+  ---------------------------------
   showSummons = function(self)
     if InCombatLockdown() then
       return
@@ -180,6 +201,12 @@ local summon = {
       f.logo:SetAlpha(.2)
       f.logo:SetText("|cfffff000SteaSummon")
 
+      f.location = f:CreateFontString(nil,"ARTWORK")
+      f.location:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
+      f.location:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, -8)
+      f.location:SetAlpha(.5)
+      f.location:SetText("")
+
       f.destination = f:CreateFontString(nil,"ARTWORK")
       f.destination:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
       f.destination:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, 0)
@@ -224,10 +251,11 @@ local summon = {
       if (addonData.util:playerCanSummon()) then
         summonClick = function(otherself, button, worked)
           if button == "LeftButton" and worked then
-            db("calling chat")
+            db("summoning ", player)
             addonData.chat:raid(SteaSummonSave.raidchat, player)
             addonData.chat:say(SteaSummonSave.saychat, player)
             addonData.chat:whisper(SteaSummonSave.whisperchat, player, player)
+            self.summoningPlayer = player
             self:summoned(player)
             addonData.gossip:summoned(player)
             self:setDestination(z, l)
@@ -239,9 +267,9 @@ local summon = {
       end
 
       --- Cancel Button
-      --- Can cancel from own UI
-      --- Cancelling self sends msg to others
-      --- If summoning warlock, can cancel and send msg to others
+      -- Can cancel from own UI
+      -- Cancelling self sends msg to others
+      -- If summoning warlock, can cancel and send msg to others
       cancelClick = function(otherself, button, worked)
         if button == "LeftButton" and worked then
           local me, void = UnitName("player")
@@ -257,8 +285,7 @@ local summon = {
 
       addonData.buttons[i].Cancel:SetScript("OnMouseUp", cancelClick)
 
-      -- Next Button
-
+      --- Next Button
       if self.waiting[i]  then
         if not next and self.waiting[i][3] == "requested" and addonData.util:playerCanSummon() then
           next = true
@@ -280,7 +307,7 @@ local summon = {
       addonData.buttons[36].Button:Hide()
     end
 
-    -- figure out if we should show the summon window
+    --- show summon window
     local show = false
     if addonData.settings:showWindow() or (addonData.settings:showActive() and self.numwaiting > 0) then
       show = true
@@ -310,6 +337,7 @@ local summon = {
     end
   end,
 
+  ---------------------------------
   createButton = function(self, i)
     -- Summon Button
     local bw = 80
@@ -403,6 +431,7 @@ local summon = {
     end
   end,
 
+  ---------------------------------
   enableButton = function(self, idx, enable)
     if enable == nil then
       enable = true
@@ -427,12 +456,14 @@ local summon = {
     end
   end,
 
+  ---------------------------------
   enableButtons = function(self, enable)
     for i=1, 35 do
       self:enableButton(i, enable)
     end
   end,
 
+  ---------------------------------
   findWaitingPlayerIdx = function(self, player)
     for i, wait in pairs(self.waiting) do
       if wait[1] == player then
@@ -442,6 +473,7 @@ local summon = {
     return nil
   end,
 
+  ---------------------------------
   findWaitingPlayer = function(self, player)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
@@ -450,6 +482,7 @@ local summon = {
     return nil
   end,
 
+  ---------------------------------
   summoned = function(self, player)
     -- update status
     db("a summon is pending for " .. player)
@@ -460,6 +493,7 @@ local summon = {
     end
   end,
 
+  ---------------------------------
   arrived = function(self, player)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
@@ -469,6 +503,7 @@ local summon = {
     end
   end,
 
+  ---------------------------------
   callback = function(self, event, ...)
     if event == "PLAYER_REGEN_DISABLED" then
       -- entered combat, stop everything or we might get tainted
@@ -479,11 +514,84 @@ local summon = {
     end
   end,
 
+  ---------------------------------
+  getCurrentLocation = function(self)
+    local z = GetZoneText()
+    local l = GetMinimapZoneText()
+    db("cureent location: ", l, " in ", z)
+    return z,l
+  end,
+
+  ---------------------------------
+  setCurrentLocation = function(self)
+    self.myZone = GetZoneText()
+    self.myLocation = GetMinimapZoneText()
+
+    if self.myZone == self.zone and self.myLocation == self.location then
+      SummonFrame.destination:SetTextColor(0,1,0,.5)
+      SummonFrame.location:SetTextColor(0,1,0,.5)
+    else
+      SummonFrame.destination:SetTextColor(1,1,1,.5)
+      SummonFrame.location:SetTextColor(1,0,0,.5)
+    end
+
+    SummonFrame.location:SetText("Location: " .. self.myZone .. ", " .. self.myLocation)
+  end,
+
+  ---------------------------------
   setDestination = function(self, zone, location)
     self.location = location
     self.zone = zone
+
+    db("setting destination: ", location, " in ", zone)
     SummonFrame.destination:SetText("Destination: " .. self.location .. ", " .. self.zone)
-  end
+    end,
+
+  ---------------------------------
+  castWatch = function(self, event, target, castUID, spellId, ...)
+    db(event, " ", target, castUID, spellId, ...)
+
+    local name, rank, icon, castTime, minRange, maxRange = GetSpellInfo(spellId)
+    db("spellcast: ", name, rank, castTime, minrange, maxrange)
+
+    -- these events can get posted up to 3 times (at least testing on myself) player, raid1 (me), target
+    -- observed:
+    -- when target is you, get target message. otherwise no
+    -- guesses:
+    -- you get target if target is casting
+    -- you get player if you are casting
+    -- you get raid1 if someone in your raid is casting (even if it is you) *** if true this is very cool
+
+    -- only interested in summon cast by raid members
+    if name ~= "Ritual of Summoning" or string.sub(target,1,4) ~= "raid" then
+      return
+    end
+
+    -- db("cast info: ", UnitCastingInfo(unit)) internal blizz call? Their code def calls this
+
+    if event == "UNIT_SPELLCAST_START" then
+      -- cast started, register this
+      -- {raider}
+      local cast = cw_spells[castUID]
+      if not cast then
+        cast = {UnitName(target)}
+        cw_spells[castUID] = cast
+        db(cast[1])
+      end
+    elseif event == "UNIT_SPELLCAST_CHANNEL_UPDATE" then
+      -- never seen this, derived from what blizz does with it, lets hope that works
+    elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
+      -- end of cast, into channel
+    elseif event == "UNIT_SPELLCAST_DELAYED" then
+      -- presumably if you get hit while casting
+    elseif event == "UNIT_SPELLCAST_INTERRUPTED"
+        or event == "UNIT_SPELLCAST_FAILED"
+        or event == "UNIT_SPELLCAST_STOP"
+        or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
+      -- cast got cancelled for whatever reason
+      cast[castUID] = nil
+    end
+  end,
 }
 
 addonData.summon = summon
