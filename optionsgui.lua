@@ -14,22 +14,32 @@ optionsgui = {
         name = "One button summoning, shared summoning list..."
       },
       general = {
-        name = "General",
+        name = "Window",
         type = "group",
         order = 0,
         args = {
-          enable = {
+          windheader = {
+            order = 0,
+            type = "header",
+            name = "Window Options"
+          },
+          wnddesc = {
             order = 1,
+            type = "description",
+            name = "Change when to display and the size of the interface. Set the window to always show before adjusting size in order to see the results."
+          },
+          enable = {
+            order = 6,
             name = "Show Summon Window",
             desc = "Toggles the summon window",
             type = "select",
-            width = "normal",
+            width = "double",
             descStyle = "inline",
             values = {
-               [1] = "Always",
-               [2] = "Only when summons are active",
-               [3] = "Only when I am in the active summon list",
-               [4] = "Never"
+              [1] = "Always",
+              [2] = "Only when summons are active",
+              [3] = "Only when I am in the active summon list",
+              [4] = "Never"
             },
             set = function(info, val)
               SteaSummonSave.show = val
@@ -40,7 +50,7 @@ optionsgui = {
             end,
           },
           windowSize = {
-            order = 2,
+            order = 4,
             type = "range",
             name = "Summon window size",
             desc = "Changes the size of the window. It helps to have show always set to see the effect while setting.",
@@ -50,6 +60,7 @@ optionsgui = {
             softMax = 3,
             step = 0.1,
             bigStep = 0.1,
+            width = "full",
             set = function(info, val)
               SteaSummonSave.windowSize = val
               SummonFrame:SetScale(val)
@@ -59,7 +70,7 @@ optionsgui = {
             end,
           },
           listSize = {
-            order = 3,
+            order = 5,
             type = "range",
             name = "Summon list size",
             desc = "Changes the size of the window contents. It helps to have show always set to see the effect while setting.",
@@ -69,29 +80,36 @@ optionsgui = {
             softMax = 3,
             step = 0.1,
             bigStep = 0.1,
+            width = "full",
             set = function(info, val)
               SteaSummonSave.listSize = val
-              ScrollFrame:SetScale(val)
-              ButtonFrame:SetScale(val * 3)
+              ButtonFrame:SetScale(val)
             end,
             get = function(info)
               return SteaSummonSave.listSize
             end,
           },
+        },
+      },
+      chat = {
+        name = "Messages",
+        type = "group",
+        order = 4,
+        args = {
           header = {
             order = 8,
             type = "header",
-            name = "Chat Options"
+            name = "Message Options"
           },
           desc = {
             order = 9,
             type = "description",
-            name = "The following chat options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
+            name = "These message options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
           },
           raid = {
             order = 10,
             name = "Summon raid notification text",
-            desc = "a line that posts to raid when someone in summoned",
+            desc = "a line that posts to raid when someone is summoned",
             type = "input",
             width = "full",
             set = function(info, val)
@@ -104,7 +122,7 @@ optionsgui = {
           whisper = {
             order = 11,
             name = "Summon whisper notification text",
-            desc = "a line that posts to raid when someone in summoned",
+            desc = "a line that is whipered to the person being summoned",
             type = "input",
             width = "full",
             set = function(info, val)
@@ -117,7 +135,7 @@ optionsgui = {
           say = {
             order = 12,
             name = "Summon portal click request in say",
-            desc = "a line that posts to raid when someone in summoned",
+            desc = "a line that posts to say when someone is summoned",
             type = "input",
             width = "full",
             set = function(info, val)
@@ -132,9 +150,20 @@ optionsgui = {
       summonwords = {
         name = "Triggers",
         type = "group",
-        order = 1,
+        order = 5,
         args = {
+          header = {
+            order = 0,
+            type = "header",
+            name = "Trigger Phrases"
+          },
+          desc = {
+            order = 1,
+            type = "description",
+            name = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list."
+          },
           summonWords = {
+            order = -1,
             name = "Trigger phrases for summon. One per line.",
             desc = "chat lines that will add a summon request for the raider",
             type = "input",
@@ -152,10 +181,20 @@ optionsgui = {
       priorities = {
         name = "Priorities",
         type = "group",
-        order = 2,
+        order = 6,
         args = {
-          warlocks = {
+          header = {
             order = 0,
+            type = "header",
+            name = "Priority Options"
+          },
+          desc = {
+            order = 1,
+            type = "description",
+            name = "These options determine where in the summon list players are inserted when they ask for a summon."
+          },
+          warlocks = {
+            order = 2,
             name = "Warlocks first",
             desc = "Put summoners at the top of the list when they request a summon",
             type = "toggle",
@@ -169,7 +208,7 @@ optionsgui = {
             end
           },
           names = {
-            order = 1,
+            order = 3,
             name = "Players to summon first, if by first, you mean behind warlocks. One player per line.",
             desc = "These players will move to the front of the summon list when they request a summon",
             width = "full",
@@ -183,7 +222,7 @@ optionsgui = {
             end
           },
           last = {
-            order = 2,
+            order = 4,
             name = "Players to summon last. Some people should just be nicer. One player per line.",
             desc = "These players will move to the back of the summon list and stay there",
             width = "full",
@@ -203,8 +242,18 @@ optionsgui = {
          type = "group",
          order = -1,
          args = {
-           debug = {
+           header = {
+             order = 0,
+             type = "header",
+             name = "Advanced Options"
+           },
+           desc = {
              order = 1,
+             type = "description",
+             name = "These are options that, should you change them, will blow up your computer."
+           },
+           debug = {
+             order = 5,
              name = "Debug",
              desc = "Turn on debugging statements",
              type = "toggle",
@@ -218,7 +267,7 @@ optionsgui = {
              end
            },
            experimental = {
-             order = 1,
+             order = 6,
              name = "Enable Experimental Features",
              desc = "This could be anything. It will probably be horribly broken, or worse, not do very much.",
              type = "toggle",
@@ -239,7 +288,7 @@ optionsgui = {
              func = addonData.settings:reset()
            },
            updates = {
-             order = 0,
+             order = 4,
              name = "Use AddOn Broadcast Communications",
              desc = "Get and send summoning status updates. Gives you notifications of summon status changes, and helps to keep the summoning list alive through relogs. Makes the Next button more effective with multiple warlock summoners i.e. please don't turn this off.",
              type = "toggle",
