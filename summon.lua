@@ -103,6 +103,7 @@ local summon = {
       local f = CreateFrame("Frame", "SummonFrame", UIParent, "AnimatedShineTemplate")--, "DialogBoxFrame")
       f:SetPoint("CENTER")
       f:SetSize(300, 250)
+      f:SetScale(SteaSummonSave.windowSize)
 
       f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -144,11 +145,11 @@ local summon = {
       sf:SetPoint("LEFT", 8, 0)
       sf:SetPoint("RIGHT", -40, 0)
       sf:SetPoint("TOP", 0, -32)
-      sf:SetScale(.5)
+      sf:SetScale(SteaSummonSave.listSize)
 
       addonData.buttonFrame = CreateFrame("Frame", "ButtonFrame", SummonFrame)
       addonData.buttonFrame:SetSize(sf:GetSize())
-      addonData.buttonFrame:SetScale(1.5)
+      addonData.buttonFrame:SetScale(SteaSummonSave.listSize * 3)
       sf:SetScrollChild(addonData.buttonFrame)
 
       --- Table of summon info
@@ -560,10 +561,10 @@ local summon = {
     -- guesses:
     -- you get target if target is casting
     -- you get player if you are casting
-    -- you get raid1 if someone in your raid is casting (even if it is you) *** if true this is very cool
+    -- you get raid1 if there is a raid (not party) if someone in your raid is casting (even if it is you) *** if true this is very cool
 
-    -- only interested in summon cast by raid members
-    if name ~= "Ritual of Summoning" or string.sub(target,1,4) ~= "raid" then
+    -- only interested in summons cast by player for now
+    if name ~= "Ritual of Summoning" or string.sub(target,1,4) == "raid" or target ~= "player" then
       return
     end
 
@@ -572,14 +573,15 @@ local summon = {
     if event == "UNIT_SPELLCAST_START" then
       -- cast started, register this
       -- {raider}
-      local cast = cw_spells[castUID]
-      if not cast then
-        cast = {UnitName(target)}
-        cw_spells[castUID] = cast
-        db(cast[1])
-      end
+      --local cast = cw_spells[castUID]
+      --if not cast then
+        --cast = {UnitName(target)}
+        --cw_spells[castUID] = cast
+        --db(cast[1])
+      --end
+
     elseif event == "UNIT_SPELLCAST_CHANNEL_UPDATE" then
-      -- never seen this, derived from what blizz does with it, lets hope that works
+      -- never seen this
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
       -- end of cast, into channel
     elseif event == "UNIT_SPELLCAST_DELAYED" then
@@ -589,7 +591,7 @@ local summon = {
         or event == "UNIT_SPELLCAST_STOP"
         or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       -- cast got cancelled for whatever reason
-      cast[castUID] = nil
+      -- no castid for stop lol
     end
   end,
 }

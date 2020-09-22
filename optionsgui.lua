@@ -23,7 +23,7 @@ optionsgui = {
             name = "Show Summon Window",
             desc = "Toggles the summon window",
             type = "select",
-            width = "double",
+            width = "normal",
             descStyle = "inline",
             values = {
                [1] = "Always",
@@ -39,13 +39,52 @@ optionsgui = {
               return SteaSummonSave.show
             end,
           },
-          header = {
+          windowSize = {
             order = 2,
+            type = "range",
+            name = "Summon window size",
+            desc = "Changes the size of the window. It helps to have show always set to see the effect while setting.",
+            min = 0.1,
+            max = 2,
+            softMin = 0.3,
+            softMax = 3,
+            step = 0.1,
+            bigStep = 0.1,
+            set = function(info, val)
+              SteaSummonSave.windowSize = val
+              SummonFrame:SetScale(val)
+            end,
+            get = function(info)
+              return SteaSummonSave.windowSize
+            end,
+          },
+          listSize = {
+            order = 3,
+            type = "range",
+            name = "Summon list size",
+            desc = "Changes the size of the window contents. It helps to have show always set to see the effect while setting.",
+            min = 0.1,
+            max = 3,
+            softMin = 0.3,
+            softMax = 3,
+            step = 0.1,
+            bigStep = 0.1,
+            set = function(info, val)
+              SteaSummonSave.listSize = val
+              ScrollFrame:SetScale(val)
+              ButtonFrame:SetScale(val * 3)
+            end,
+            get = function(info)
+              return SteaSummonSave.listSize
+            end,
+          },
+          header = {
+            order = 8,
             type = "header",
             name = "Chat Options"
           },
           desc = {
-            order = 2,
+            order = 9,
             type = "description",
             name = "The following chat options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
           },
