@@ -145,11 +145,11 @@ local summon = {
       sf:SetPoint("LEFT", 8, 0)
       sf:SetPoint("RIGHT", -40, 0)
       sf:SetPoint("TOP", 0, -32)
-      sf:SetScale(SteaSummonSave.listSize)
+      sf:SetScale(0.5)
 
       addonData.buttonFrame = CreateFrame("Frame", "ButtonFrame", SummonFrame)
       addonData.buttonFrame:SetSize(sf:GetSize())
-      addonData.buttonFrame:SetScale(SteaSummonSave.listSize * 3)
+      addonData.buttonFrame:SetScale(SteaSummonSave.listSize)
       sf:SetScrollChild(addonData.buttonFrame)
 
       --- Table of summon info

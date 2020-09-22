@@ -44,7 +44,7 @@ settings = {
     end
 
     if SteaSummonSave.listSize == nil then
-      SteaSummonSave.listSize = 0.5
+      SteaSummonSave.listSize = 1.5
     end
   end,
 
@@ -62,7 +62,7 @@ settings = {
     SteaSummonSave.saychat = "Summoning %p, please click the portal"
     SteaSummonSave.experimental = false
     SteaSummonSave.windowSize = 1
-    SteaSummonSave.listSize = 0.5
+    SteaSummonSave.listSize = 1.5
   end,
 
   findSummonWord = function(self, phrase)
