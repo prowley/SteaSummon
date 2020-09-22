@@ -71,8 +71,9 @@ local summon = {
       local players = {}
       for i, wait in pairs(self.waiting) do
         local player = wait[1]
+        db("Trying to detect", player)
         if addonData.util:playerClose(player) then
-          db(wait[i] .. " detected close by")
+          db(player .. " detected close by")
           table.insert(players, player) -- yea, don't mess with tables while iterating on them
         end
       end
