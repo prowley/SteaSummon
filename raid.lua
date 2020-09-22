@@ -22,6 +22,7 @@ local raid = {
         db(event, " ", arg1, " ", arg2, " ", arg3, " ", arg4, " ", arg5, " ", arg6, " ", arg7)
 
         -- for now, this is in observe mode until I understand how this event works
+        -- it could drive addon network leader election cycle, keep track of close online players
         if (event == "RAID_ROSTER_UPDATE") then
           old, new = new, old
           wipe(new)

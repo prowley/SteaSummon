@@ -18,7 +18,14 @@ function start()
   call["GROUP_ROSTER_UPDATE"] = addonData.raid.callback
   call["RAID_ROSTER_UPDATE"] = addonData.raid.callback
   call["PLAYER_REGEN_DISABLED"] = addonData.summon.callback
-  call["PLAYER_REGEN_ENABLED"] = addonData.summon.callback
+  call["UNIT_SPELLCAST_START"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_STOP"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_FAILED"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_INTERRUPTED"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_DELAYED"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_CHANNEL_START"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_CHANNEL_UPDATE"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_CHANNEL_STOP"] = addonData.summon.castWatch
 
    -- set up the load event
   frame = CreateFrame("Frame")
@@ -62,6 +69,7 @@ function loaded(self, event, ...)
     db("addon channel registered: ", commsgood)
     cprint("loaded")
 
+    addonData.summon:showSummons()
     addonData.gossip:initialize() -- this will get you a head start when doing a log out/in cycle
   end
 end

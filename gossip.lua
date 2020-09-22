@@ -5,14 +5,13 @@ local addonName, addonData = ...
 
 -- protocol
 -----------
--- s summon
 -- a arrived
+-- d destination
+-- TODO: e election (reduce network traffic by having leader do the thing, right now everyone replies to i - packet storm)
 -- i initialize me
 -- l waiting list
 -- d destination
 
--- TODO: addon protocol
--- e election
 
 local gossip = {
   summoned = function(self, player)
@@ -58,20 +57,20 @@ local gossip = {
     if prefix ~= addonData.channel then
       return
     end
-    local cmd, player strsplit(" ", msg)
+    local cmd, subcmd strsplit(" ", msg)
     if cmd == "s" then
-      addonData.summon:summoned(player)
+      addonData.summon:summoned(subcmd)
     elseif cmd == "a" then
-      addonData.summon:arrived(player)
+      addonData.summon:arrived(subcmd)
     elseif cmd == "i" then
       if addonData.summon.numwaiting then
         local data = addonData.util:marshalWaitingTable()
         C_ChatInfo.SendAddonMessage(addonData.channel, "l " .. data, "RAID")
       end
     elseif cmd == "l" then
-      addonData.util:unmarshalWaitingTable(player)
+      addonData.util:unmarshalWaitingTable(subcmd)
     elseif cmd == "d" then
-      local destination = string.gsub(destination, "_", " ")
+      local destination = string.gsub(subcmd, "_", " ")
       local location, zone = strsplit(",", destination)
       addonData.summon:setDestination(zone, location)
     end
