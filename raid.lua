@@ -71,7 +71,7 @@ local raid = {
           end
         end
       end
-      SummonFrame.status:SetText("Locks " .. lock .. " Clickers " ..  click)
+      SummonFrame.status:SetText("Locks " .. lock .. "\nClickers " ..  click)
     end
     return lock,click
   end

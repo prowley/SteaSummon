@@ -20,7 +20,6 @@ local chat = {
         if cmd == nil then cmd = "list" end
         if args == nil then args = "" end
         cmd = string.lower(cmd)
-        args = string.lower(args)
 
         db("Received command : " .. cmd .. " " .. args)
         if cmd == "list" then
