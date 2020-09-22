@@ -276,7 +276,7 @@ local summon = {
 
 
     if not next then
-      -- all summons left are pending, or we are in the wrong place for the summon location, disable the next button
+      -- all summons left are pending, disable the next button
       addonData.buttons[36].Button:Hide()
     end
 
@@ -410,7 +410,6 @@ local summon = {
 
     if enable then
       if not InCombatLockdown() then
-        --- experience has shown that from func stsrt to here, we can enter combat and get swatted...
         addonData.buttons[idx].Button:Show()
         addonData.buttons[idx].Cancel:Show()
         addonData.buttons[idx].Time:Show()
