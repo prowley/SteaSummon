@@ -43,7 +43,7 @@ local summon = {
     if not inserted then
       local i = self.numwaiting
       while i > 1 and addonData.settings:findShitlistPlayer(self.waiting[i-1][1]) do
-        db(self.waiting[i][1], " on shitlist, finding a better spot ")
+        db(self.waiting[i-1][1], "on shitlist, finding a better spot ")
         i = i - 1
       end
       table.insert(self.waiting, i, {player, 0, "requested"})
@@ -216,7 +216,7 @@ local summon = {
 
       f.status = f:CreateFontString(nil,"ARTWORK")
       f.status:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.status:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, -10)
+      f.status:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", -30, -20)
       f.status:SetAlpha(.5)
       f.status:SetText("")
 
