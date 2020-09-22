@@ -4,7 +4,6 @@ local summon = {
   waiting = {}, -- the summon list
   numwaiting = 0, -- the summon list length
   hasSummoned = false, -- when true we believe you more
-  halt = false, -- the full stop for combat (so blizz doesn't taint us)
   tainted = false, -- indicates player has cancelled something that's nothing to do with them
   location = "", -- area of zone summons are going to
   zone = "", -- the zone summons are going to
@@ -75,6 +74,10 @@ local summon = {
   getWaiting = function(self) return self.waiting end,
 
   showSummons = function(self)
+    if InCombatLockdown() then
+      return
+    end
+
     if not SummonFrame then
       local f = CreateFrame("Frame", "SummonFrame", UIParent, "AnimatedShineTemplate")--, "DialogBoxFrame")
       f:SetPoint("CENTER")
@@ -293,9 +296,7 @@ local summon = {
     end
 
     if show then
-      if not halt then
         SummonFrame:Show()
-      end
       if self.numwaiting > 0 then
         addonData.monitor:start() -- start ui update tick
       end
@@ -408,17 +409,22 @@ local summon = {
     end
 
     if enable then
-      addonData.buttons[idx].Button:Show()
-      addonData.buttons[idx].Cancel:Show()
-      addonData.buttons[idx].Time:Show()
-      addonData.buttons[idx].Status:Show()
-      addonData.buttons[idx].Button:Enable()
+      if not InCombatLockdown() then
+        --- experience has shown that from func stsrt to here, we can enter combat and get swatted...
+        addonData.buttons[idx].Button:Show()
+        addonData.buttons[idx].Cancel:Show()
+        addonData.buttons[idx].Time:Show()
+        addonData.buttons[idx].Status:Show()
+        addonData.buttons[idx].Button:Enable()
+      end
     else
-      addonData.buttons[idx].Button:Hide()
-      addonData.buttons[idx].Cancel:Hide()
-      addonData.buttons[idx].Time:Hide()
-      addonData.buttons[idx].Status:Hide()
-      addonData.buttons[idx].Button:Enable()
+      if not InCombatLockdown() then
+        addonData.buttons[idx].Button:Hide()
+        addonData.buttons[idx].Cancel:Hide()
+        addonData.buttons[idx].Time:Hide()
+        addonData.buttons[idx].Status:Hide()
+        addonData.buttons[idx].Button:Enable()
+      end
     end
   end,
 
@@ -468,11 +474,9 @@ local summon = {
     if event == "PLAYER_REGEN_DISABLED" then
       -- entered combat, stop everything or we might get tainted
       SummonFrame:Hide()
-      halt = true
     end
-    if event == "PLAYER_REGEN_DISABLED" then
+    if event == "PLAYER_REGEN_ENABLED" then
       -- start things up again
-      halt = false
     end
   end,
 

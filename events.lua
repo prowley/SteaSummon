@@ -14,13 +14,9 @@ function start()
   call["CHAT_MSG_RAID_LEADER"] = addonData.chat.callback
   call["CHAT_MSG_ADDON"] = addonData.gossip.callback
   call["CHAT_MSG_SAY"] = addonData.chat.callback
-  -- apparently doesnt exist call["PARTY_CONVERTED_TO_RAID"] = addonData.raid.callback
   call["PARTY_LEADER_CHANGED"] = addonData.raid.callback
-  -- not exist call["GROUP_ROSTER_CHANGED"] = addonData.raid.callback
   call["GROUP_ROSTER_UPDATE"] = addonData.raid.callback
   call["RAID_ROSTER_UPDATE"] = addonData.raid.callback
-  call["NAME_PLATE_UNIT_ADDED"] = addonData.raid.callback
-  call["NAME_PLATE_UNIT_REMOVED"] = addonData.raid.callback
   call["PLAYER_REGEN_DISABLED"] = addonData.summon.callback
   call["PLAYER_REGEN_ENABLED"] = addonData.summon.callback
 
@@ -47,30 +43,25 @@ function loaded(self, event, ...)
     addonData.optionsgui:init()
 
     local playerClass, englishClass = UnitClass("player")
-  
-    if (playerClass ~= "Warlock") then
-      -- only work for warlocks
-      cprint("loaded but disabled")
-    else
-      -- register other events
-      for k,v in pairs(call) do
-        if k ~= "ADDON_LOADED" then
-          db("registering event", k)
-          frame:RegisterEvent(k)
-        end
+
+    -- register other events
+    for k,v in pairs(call) do
+      if k ~= "ADDON_LOADED" then
+        db("registering event", k)
+        frame:RegisterEvent(k)
       end
-      
-      -- create monitor callback
-      db("setting up monitor callback")
-      addonData.monitor:init()
-
-      -- register addon comms channel
-      addonData.channel = "SteaSummon"
-      local commsgood = C_ChatInfo.RegisterAddonMessagePrefix(addonData.channel)
-      db("addon channel registered: ", commsgood)
-      cprint("loaded")
-
-      addonData.gossip:initialize() -- this will get you a head start when doing a log out/in cycle
     end
+
+    -- create monitor callback
+    db("setting up monitor callback")
+    addonData.monitor:init()
+
+    -- register addon comms channel
+    addonData.channel = "SteaSummon"
+    local commsgood = C_ChatInfo.RegisterAddonMessagePrefix(addonData.channel)
+    db("addon channel registered: ", commsgood)
+    cprint("loaded")
+
+    addonData.gossip:initialize() -- this will get you a head start when doing a log out/in cycle
   end
 end

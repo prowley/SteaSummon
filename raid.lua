@@ -8,48 +8,63 @@ local addonName, addonData = ...
 -- NAME_PLATE_UNIT_REMOVED
 -- NAME_PLATE_UNIT_ADDED
 
-   --GetRaidRosterInfo(1..40)
-   --UnitInRaid("unit")
+--GetRaidRosterInfo(1..40)
+--UnitInRaid("unit")
+
+local guids = {}
 
 local raid = {
-  guids = {},
+    callback = function(self, event, ...)
+      local arg1, arg2, arg3, arg4, arg5, arg6, arg7 = ...
 
-  callback = function(self, event, ...)
-    local arg1, arg2, arg3, arg4, arg5, arg6, arg7 = ...
-    db(event, " ", arg1, " ", arg2, " ", arg3, " ", arg4, " ", arg5, " ", arg6, " ", arg7)
+      if SteaSummonSave.experimental then
+        db(event, " ", arg1, " ", arg2, " ", arg3, " ", arg4, " ", arg5, " ", arg6, " ", arg7)
 
-    if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE" or event == "PARTY_LEADER_CHANGED") then
-      -- stuff has happenned, maybe we joined a group - might be a bit chatty
-      addonData.gossip:initialize()
-    end
-
-    if event == "NAME_PLATE_UNIT_ADDED" then
-      guids[UnitGUID(arg1)] = arg1
-    end
-
-    if event == "NAME_PLATE_UNIT_REMOVED" then
-      self.guids[UnitGUID(arg1)] = nil
-    end
+        -- for now, this is in observe mode until I understand how this event works
+        local old, new = {}, {}
+        if (event == "RAID_ROSTER_UPDATE") then
+          old, new = new, old
+          wipe(new)
+          for i = 1, GetNumRaidMembers() do
+            local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
+            new[name] = online or false
+            if old[name] == nil then
+              db(name, " joined the raid.")
+            elseif old[name] and not online then
+              db(name, " has gone offline.")
+            elseif online and not old[name] then
+              db(name, " logged back on.")
+            end
+          end
+          for name, online in pairs(old) do
+            if not new[name] then
+              db(name, " left the raid.")
+            end
+          end
+        end
+      end
   end,
 
   fishArea = function(self)
     local lock = 0
     local click = 0
-    if UnitClass("player") == "Warlock" and UnitLevel("player") >= 20 then
-      lock = 1
-    else
-      click = 1
-    end
-    for k, v in pairs(self.guids) do
-      if UnitInRaid(v) then
-        if UnitClass(v) == "Warlock" and UnitLevel(v) >= 20 then
-          lock = lock + 1
-        else
-          click = click + 1
+    if SteaSummonSave.experimental then
+      if UnitClass("player") == "Warlock" and UnitLevel("player") >= 20 then
+        lock = 1
+      else
+        click = 1
+      end
+      for k, v in pairs(guids) do
+        if UnitInRaid(v) then
+          if UnitClass(v) == "Warlock" and UnitLevel(v) >= 20 then
+            lock = lock + 1
+          else
+            click = click + 1
+          end
         end
       end
+      SummonFrame.status:SetText("Locks " .. lock .. " Clickers " ..  click)
     end
-    SummonFrame.status:SetText("Locks " .. lock .. " Clickers " ..  click)
     return lock,click
   end
 }

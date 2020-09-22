@@ -12,6 +12,8 @@ local chat = {
       return
     end
 
+    db("testing chat for keywords")
+
     if player == me then
       if msg and msg:find("!SS") == 1 then
         local prmpt, cmd, args = strsplit(" ", msg)

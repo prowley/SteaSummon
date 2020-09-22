@@ -164,6 +164,20 @@ optionsgui = {
                return SteaSummonSave.debug
              end
            },
+           experimental = {
+             order = 1,
+             name = "Enable Experimental Features",
+             desc = "This could be anything. It will probably be horribly broken, or worse, not do very much.",
+             type = "toggle",
+             width = "full",
+             descStyle = "inline",
+             set = function(info, val)
+               SteaSummonSave.experimental = val
+             end,
+             get = function(info)
+               return SteaSummonSave.experimental
+             end
+           },
            reset = {
              order = -1,
              name = "Reset to Defaults",

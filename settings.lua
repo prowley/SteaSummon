@@ -29,7 +29,7 @@ summonWords[21] ="summons ready"
 
 settings = {
   init = function(self)
-    if SteaSummonSave == nil then
+    if SteaSummonSave == nil or SteaSummonSave.prioplayers == nil then
       self:reset()
     end
   end,
@@ -45,6 +45,7 @@ settings = {
       SteaSummonSave.raidchat = "Summoning %p"
       SteaSummonSave.whisperchat = "Summoning you to %l in %z"
       SteaSummonSave.saychat = "Summoning %p, please click the portal"
+      SteaSummonSave.experimental = false
   end,
 
   findSummonWord = function(self, phrase)
