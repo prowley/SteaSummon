@@ -65,12 +65,13 @@ local util = {
 
   playerClose = function(self, player)
     local me, void = UnitName("player")
-    player = strsplit("-", player)[1] -- might turn up as player-server
+    player = strsplit("-", player) -- might turn up as player-server
 
     if me == player or player == "player" then
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
 
+    db("testing for closeness:", player)
     return IsSpellInRange("Unending Breath", player)
   end,
 
