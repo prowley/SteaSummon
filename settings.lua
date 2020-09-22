@@ -38,21 +38,31 @@ settings = {
     if SteaSummonSave.shitlist == nil then
       SteaSummonSave.shitlist = {[1]="Evolym"}
     end
+
+    if SteaSummonSave.windowSize == nil then
+      SteaSummonSave.windowSize = 1
+    end
+
+    if SteaSummonSave.listSize == nil then
+      SteaSummonSave.listSize = 0.5
+    end
   end,
 
   reset = function(self)
-      SteaSummonSave = {}
-      SteaSummonSave.summonWords = summonWords
-      SteaSummonSave.debug = false
-      SteaSummonSave.show = 2
-      SteaSummonSave.updates = true
-      SteaSummonSave.prioplayers = {[1]="Stea"}
-      SteaSummonSave.shitlist = {[1]="Evolym"}
-      SteaSummonSave.warlocks = true
-      SteaSummonSave.raidchat = "Summoning %p"
-      SteaSummonSave.whisperchat = "Summoning you to %l in %z"
-      SteaSummonSave.saychat = "Summoning %p, please click the portal"
-      SteaSummonSave.experimental = false
+    SteaSummonSave = {}
+    SteaSummonSave.summonWords = summonWords
+    SteaSummonSave.debug = false
+    SteaSummonSave.show = 2
+    SteaSummonSave.updates = true
+    SteaSummonSave.prioplayers = {[1]="Stea"}
+    SteaSummonSave.shitlist = {[1]="Evolym"}
+    SteaSummonSave.warlocks = true
+    SteaSummonSave.raidchat = "Summoning %p"
+    SteaSummonSave.whisperchat = "Summoning you to %l in %z"
+    SteaSummonSave.saychat = "Summoning %p, please click the portal"
+    SteaSummonSave.experimental = false
+    SteaSummonSave.windowSize = 1
+    SteaSummonSave.listSize = 0.5
   end,
 
   findSummonWord = function(self, phrase)
@@ -119,26 +129,6 @@ settings = {
 
   setWindowPos = function(self, pos)
       SteaSummonSave.winowpos = pos
-  end,
-
-  options_init = function(self)
-    self.options.panel = CreateFrame("Frame", "optionsPanel", UIParent );
-    self.options.panel.name = "SteaSummon";
-
-    self.options.showsummon = CreateFrame("CheckButton", "oshowsummoncheck", self.options.panel, OptionsCheckButtonTemplate);
-    self.options.showsummon:SetPoint("TOPLEFT","optionsPanel","TOPLEFT",5,5)
-    self.options.showsummon:SetWidth(80)
-    self.options.showsummon:SetHeight(25)
-    self.options.showsummon:SetText("Stea")
-    self.options.showsummon:Show()
-
-    self.options.panel.setframe = CreateFrame("Frame", "optionsPanelUI", self.options.panel );
-    self.options.panel.setframe.name = "optionsUI";
-    --self.options.panel.setframe.scroll = CreateFrame("ScrollFrame", "SteaSummonScroll",
-    --    options.panel.setframe, "UIPanelScrollFrameTemplate");
-
-    self.options.panel:Show()
-    InterfaceOptions_AddCategory(self.options.panel);
   end,
 }
 
