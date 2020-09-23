@@ -67,11 +67,11 @@ local util = {
     local me, void = UnitName("player")
     player = strsplit("-", player) -- might turn up as player-server
 
-    if SteaSummonSave.debug then
-      if me == player or player == "player" then
-        return false -- don't trip for yourself, we'll let others tell us you're summoned :)
-      end
+
+    if me == player or player == "player" then
+      return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
+
 
     return IsSpellInRange("Unending Breath", player)
   end,
