@@ -10,17 +10,18 @@ local addonName, addonData = ...
 -- TODO: e election (reduce network traffic by having leader do the thing, right now everyone replies to i - packet storm)
 -- i initialize me
 -- l waiting list
--- d destination
+-- s status
+
 
 
 local gossip = {
-  summoned = function(self, player)
+  status = function(self, player, status)
     if not addonData.settings:useUpdates() then
       return
     end
 
     if (addonData.util:playerCanSummon()) then
-      C_ChatInfo.SendAddonMessage(addonData.channel, "s " .. player, "RAID")
+      C_ChatInfo.SendAddonMessage(addonData.channel, "s " .. player .. "-" .. status, "RAID")
     end
   end,
 
@@ -59,7 +60,8 @@ local gossip = {
     end
     local cmd, subcmd strsplit(" ", msg)
     if cmd == "s" then
-      addonData.summon:summoned(subcmd)
+      p, s = strsplit("-", subcmd)
+      addonData.summon:status(p, s)
     elseif cmd == "a" then
       addonData.summon:arrived(subcmd)
     elseif cmd == "i" then

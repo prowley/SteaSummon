@@ -67,24 +67,24 @@ local chat = {
     self:sendChat(msg, "RAID", "RAID", player)
   end,
 
-  say = function(self, msg)
+  say = function(self, msg, player)
     self:sendChat(msg, "SAY", "SAY", player)
   end,
 
-  whisper = function(self, msg, to, player)
-    self:sendChat(msg, "WHISPER", to)
+  whisper = function(self, msg, player)
+    self:sendChat(msg, "WHISPER", player, player)
   end,
 
-  sendChat = function(self, msg, channel, to)
+  sendChat = function(self, msg, channel, channel2, to)
     db("sendChat ", msg, " ", channel, " ", to)
     if msg ~= nil and ms ~= "" then
       -- substitute variables in message
-      local patterns = {["%%p"] = player, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
+      local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
       for key, val in pairs(patterns) do
         msg = string.gsub(msg, key, val)
       end
 
-      SendChatMessage(msg,channel,nil,to)
+      SendChatMessage(msg,channel,channel2,to)
     end
   end
 }
