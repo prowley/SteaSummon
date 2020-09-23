@@ -2,7 +2,7 @@
 ## Title: SteaSummon
 ## Notes: Warlock Summoning
 ## Author: Stea
-## Version: 0.42
+## Version: 0.43
 ## SavedVariablesPerCharacter: SteaSummonSave
 
 Libs\embeds.xml

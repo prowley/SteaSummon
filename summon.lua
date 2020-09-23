@@ -1,6 +1,7 @@
 local addonName, addonData = ...
 
 local cw_spells = {} -- current summon spells being cast, module level because accessed in a callback
+local g_self -- for callbacks
 
 local summon = {
   waiting = {}, -- the summon list
@@ -71,7 +72,6 @@ local summon = {
       local players = {}
       for i, wait in pairs(self.waiting) do
         local player = wait[1]
-        db("Trying to detect", player)
         if addonData.util:playerClose(player) then
           db(player .. " detected close by")
           table.insert(players, player) -- yea, don't mess with tables while iterating on them
@@ -101,6 +101,7 @@ local summon = {
     end
 
     if not SummonFrame then
+      g_self = self
       local f = CreateFrame("Frame", "SummonFrame", UIParent, "AnimatedShineTemplate")--, "DialogBoxFrame")
       f:SetPoint("CENTER")
       f:SetSize(300, 250)
@@ -254,12 +255,12 @@ local summon = {
         summonClick = function(otherself, button, worked)
           if button == "LeftButton" and worked then
             db("summoning ", player)
+            addonData.gossip:status(player, "pending")
             addonData.chat:raid(SteaSummonSave.raidchat, player)
             addonData.chat:say(SteaSummonSave.saychat, player)
-            addonData.chat:whisper(SteaSummonSave.whisperchat, player, player)
+            addonData.chat:whisper(SteaSummonSave.whisperchat, player)
             self.summoningPlayer = player
             self:summoned(player)
-            addonData.gossip:summoned(player)
             self:setDestination(z, l)
             addonData.gossip:destination(z, l)
             self.hasSummoned = true
@@ -490,8 +491,17 @@ local summon = {
     db("a summon is pending for " .. player)
     waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
-      waitEntry[2] = 0
       waitEntry[3] = "pending"
+    end
+  end,
+
+  ---------------------------------
+  status = function(self, player, status)
+    -- update status
+    db("status changed to", status, "for", player)
+    waitEntry = self:findWaitingPlayer(player)
+    if waitEntry ~= nil then
+      waitEntry[3] = status
     end
   end,
 
@@ -502,6 +512,16 @@ local summon = {
       db("removing " .. player .. " from the waiting list")
       table.remove(self.waiting, idx)
       self.numwaiting = self.numwaiting - 1
+    end
+  end,
+
+  ---------------------------------
+  summonFail = function(self)
+    local idx = self:findWaitingPlayerIdx(self.summoningPlayer)
+    if idx then
+      db("something went wrong, resetting status of " .. player .. " to requested")
+      self.waiting[idx][3] = "requested"
+      addonData.gossip:status(player, "requested")
     end
   end,
 
@@ -593,6 +613,7 @@ local summon = {
         or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       -- cast got cancelled for whatever reason
       -- no castid for stop lol
+      addonData.summon.summonFail(g_self)
     end
   end,
 }
