@@ -1,12 +1,14 @@
-## Interface: 11302
+## Interface: 11305
 ## Title: SteaSummon
 ## Notes: Warlock Summoning
 ## Author: Stea
 ## Version: 0.44
-## SavedVariablesPerCharacter: SteaSummonSave
+## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG
+
 
 Libs\embeds.xml
 
+debug.lua
 util.lua
 wordlist.lua
 settings.lua

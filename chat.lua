@@ -3,6 +3,10 @@
 local addonName, addonData = ...
 
 local chat = {
+  init = function(self)
+    addonData.debug:registerCategory("chat")
+  end,
+
   callback = function (self, event, msg, servername, ...)
     local me, void = UnitName("player")
 

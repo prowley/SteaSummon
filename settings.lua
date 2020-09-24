@@ -29,6 +29,7 @@ summonWords[21] ="summons ready"
 
 settings = {
   init = function(self)
+    addonData.debug:registerCategory("settings")
     if SteaSummonSave == nil or SteaSummonSave.prioplayers == nil then
       self:reset()
     end
@@ -51,7 +52,6 @@ settings = {
   reset = function(self)
     SteaSummonSave = {}
     SteaSummonSave.summonWords = summonWords
-    SteaSummonSave.debug = false
     SteaSummonSave.show = 2
     SteaSummonSave.updates = true
     SteaSummonSave.prioplayers = {[1]="Stea"}
@@ -124,11 +124,11 @@ settings = {
   end,
 
   getWindowPos = function(self)
-      return SteaSummonSave.winowpos
+    return SteaSummonSave.winowpos
   end,
 
   setWindowPos = function(self, pos)
-      SteaSummonSave.winowpos = pos
+    SteaSummonSave.winowpos = pos
   end,
 }
 
