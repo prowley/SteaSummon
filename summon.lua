@@ -14,43 +14,56 @@ local summon = {
   zone = "", -- the zone summons are going to
   summoningPlayer = "", -- the player currently being summoned
 
+  init = function(self)
+    addonData.debug:registerCategory("summon.display")
+    addonData.debug:registerCategory("summon.waitlist")
+    addonData.debug:registerCategory("summon.tick")
+    addonData.debug:registerCategory("summon.misc")
+    addonData.debug:registerCategory("summon.spellcast")
+  end,
+
   ---------------------------------
   addWaiting = function(self, player)
     if self:findWaitingPlayerIdx(player) then
+      self.waiting[3] = "requested"
       return
     end
-    db("Making some space for ", player)
+    player = strsplit("-", player)
+    db("summon.waitlist", "Making some space for ", player)
     self.numwaiting = self.numwaiting + 1
 
     -- priorities
     local inserted = false
-    if SteaSummonSave.warlocks and UnitClass(player) == "Warlock" then
-      db("Warlock " .. player .. " gets prio")
-      table.insert(self.waiting, 1, {player, 0, "requested"})
+    if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
+      db("summon.waitlist", "Warlock " .. player .. " gets prio")
+      table.insert(self.waiting, 1, {player, 0, "requested", "warlock"})
       inserted = true
     elseif addonData.settings:findPrioPlayer(player) ~= nil then
       for k, wait in pairs(self.waiting) do
-        if not (SteaSummonSave.warlocks and UnitClass(wait[i]) == "Warlock") and not addonData.settings:findPrioPlayer(wait[i]) then
-          table.insert(self.waiting, k, {player, 0, "requested"})
-          db("Priotity " .. player .. " gets prio")
+        if not (SteaSummonSave.warlocks and addonData.util:playerCanSummon(wait[1]))
+            and not addonData.settings:findPrioPlayer(wait[1]) then
+          table.insert(self.waiting, k, {player, 0, "requested", "prioritized"})
+          db("summon.waitlist", "Priority " .. player .. " gets prio")
           inserted = true
+          break
         end
       end
     elseif addonData.settings:findShitlistPlayer(player) ~= nil then
-      self.waiting[self.numwaiting] = {player, 0, "requested"}
+      self.waiting[self.numwaiting] = {player, 0, "requested", "last"}
       inserted = true
     end
 
     if not inserted then
+      local i
       local i = self.numwaiting
       while i > 1 and addonData.settings:findShitlistPlayer(self.waiting[i-1][1]) do
-        db(self.waiting[i-1][1], "on shitlist, finding a better spot ")
+        db("summon.waitlist", self.waiting[i-1][1], "on shitlist, finding a better spot")
         i = i - 1
       end
-      table.insert(self.waiting, i, {player, 0, "requested"})
+      table.insert(self.waiting, i, {player, 0, "requested", ""})
     end
 
-    db(player .. " added to waiting list")
+    db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
   end,
 
@@ -68,21 +81,20 @@ local summon = {
     end
 
     --- detect arriving players
-    if (self.hasSummoned) then -- avoids warlocks in random places removing people from list
-      local players = {}
-      for i, wait in pairs(self.waiting) do
-        local player = wait[1]
-        if addonData.util:playerClose(player) then
-          db(player .. " detected close by")
-          table.insert(players, player) -- yea, don't mess with tables while iterating on them
-        end
-      end
-
-      for i, player in pairs(players) do
-        self:arrived(player)
-        addonData.gossip:arrived(player) -- let everyone else know
+    local players = {}
+    for i, wait in pairs(self.waiting) do
+      local player = wait[1]
+      if addonData.util:playerClose(player) then
+        db("summon.tick", player .. " detected close by")
+        table.insert(players, player) -- yea, don't mess with tables while iterating on them
       end
     end
+
+    for i, player in pairs(players) do
+      self:arrived(player)
+      addonData.gossip:arrived(player) -- let everyone else know
+    end
+
 
     --- update our location
     self:setCurrentLocation()
@@ -167,6 +179,7 @@ local summon = {
       --- Resizable
       f:SetResizable(true)
       f:SetMinResize(80, 25)
+      f:SetClampedToScreen(true)
 
       local rb = CreateFrame("Button", "ResizeButton", SummonFrame)
       rb:SetPoint("BOTTOMRIGHT", -6, 7)
@@ -241,6 +254,9 @@ local summon = {
         self:enableButton(i)
         player = self.waiting[i][1]
         addonData.buttons[i].Button:SetText(player)
+        _, class = UnitClass(player)
+        r,g,b,_ = GetClassColor(class)
+        addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
         if (addonData.util:playerCanSummon()) then
           addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast Ritual of Summoning")
         end
@@ -410,7 +426,7 @@ local summon = {
       addonData.buttons[i].Time["FS"]:SetHeight(25)
       addonData.buttons[i].Time["FS"]:SetJustifyH("CENTER")
       addonData.buttons[i].Time["FS"]:SetFontObject("GameFontNormalSmall")
-      addonData.buttons[i].Time["FS"]:SetText("time")
+      addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(0)))
 
       -- Status
       addonData.buttons[i].Status = CreateFrame("Frame", "SummonStatus"..i, addonData.buttonFrame)
@@ -488,9 +504,9 @@ local summon = {
   ---------------------------------
   summoned = function(self, player)
     -- update status
-    db("a summon is pending for " .. player)
     waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
+      db("summon.waitlist", "a summon is pending for " .. player)
       waitEntry[3] = "pending"
     end
   end,
@@ -498,30 +514,72 @@ local summon = {
   ---------------------------------
   status = function(self, player, status)
     -- update status
-    db("status changed to", status, "for", player)
     waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
+      db("summon.waitlist", "status changed to", status, "for", player)
       waitEntry[3] = status
     end
   end,
 
   ---------------------------------
   arrived = function(self, player)
-    local idx = self:findWaitingPlayerIdx(player)
-    if idx then
-      db("removing " .. player .. " from the waiting list")
-      table.remove(self.waiting, idx)
-      self.numwaiting = self.numwaiting - 1
-    end
+    self:remove(player)
   end,
 
   ---------------------------------
   summonFail = function(self)
     local idx = self:findWaitingPlayerIdx(self.summoningPlayer)
     if idx then
-      db("something went wrong, resetting status of " .. player .. " to requested")
+      db("summon.waitlist", "something went wrong, resetting status of " .. self.summoningPlayer .. " to requested")
       self.waiting[idx][3] = "requested"
-      addonData.gossip:status(player, "requested")
+      addonData.gossip:status(self.summoningPlayer, "requested")
+    end
+  end,
+
+  offline = function(self, offline, player)
+    local idx = self:findWaitingPlayerIdx(player)
+    if idx then
+      local state = ""
+      if offline then
+        db("summon.waitlist", "setting status of " .. player .. " to offline")
+        state = "offline"
+      else
+        if self.waiting[idx][3] == "offline" then
+          db("summon.waitlist", "setting status of " .. player .. " from offline to waiting")
+          state = "waiting"
+        end
+      end
+      if state ~= "" then
+        self.waiting[idx][3] = state
+      end
+    end
+  end,
+
+  remove = function(self, player)
+    local idx = self:findWaitingPlayerIdx(player)
+    if idx then
+      db("summon.waitlist", "removing", player, "from the waiting list")
+      table.remove(self.waiting, idx)
+      self.numwaiting = self.numwaiting - 1
+    end
+  end,
+
+  dead = function(self, dead, player)
+    local idx = self:findWaitingPlayerIdx(player)
+    if idx then
+      local state = ""
+      if dead then
+        state = "dead"
+        db("summon.waitlist", "setting status of", player, "to dead")
+      else
+        if self.waiting[idx][3] == "dead" then
+          db("summon.waitlist", "setting status of", player, "from dead to waiting")
+          state = "waiting"
+        end
+      end
+      if state ~= "" then
+        self.waiting[idx][3] = state
+      end
     end
   end,
 
@@ -532,7 +590,7 @@ local summon = {
       SummonFrame:Hide()
     end
     if event == "PLAYER_REGEN_ENABLED" then
-      -- start things up again
+      -- start things up again, nothing to do
     end
   end,
 
@@ -540,7 +598,6 @@ local summon = {
   getCurrentLocation = function(self)
     local z = GetZoneText()
     local l = GetMinimapZoneText()
-    db("cureent location: ", l, " in ", z)
     return z,l
   end,
 
@@ -565,16 +622,16 @@ local summon = {
     self.location = location
     self.zone = zone
 
-    db("setting destination: ", location, " in ", zone)
+    db("summon.misc", "setting destination: ", location, " in ", zone)
     SummonFrame.destination:SetText("Destination: " .. self.location .. ", " .. self.zone)
     end,
 
   ---------------------------------
   castWatch = function(self, event, target, castUID, spellId, ...)
-    db(event, " ", target, castUID, spellId, ...)
+    db("summon.spellcast", event, " ", target, castUID, spellId, ...)
 
     local name, rank, icon, castTime, minRange, maxRange = GetSpellInfo(spellId)
-    db("spellcast: ", name, rank, castTime, minrange, maxrange)
+    db("summon.spellcast", name, rank, castTime, minrange, maxrange)
 
     -- these events can get posted up to 3 times (at least testing on myself) player, raid1 (me), target
     -- observed:
@@ -589,16 +646,16 @@ local summon = {
       return
     end
 
-    -- db("cast info: ", UnitCastingInfo(unit)) internal blizz call? Their code def calls this
+    --db("summon.spellcast", "cast info: ", UnitCastingInfo(unit)) internal blizz call? Their code def calls this
 
     if event == "UNIT_SPELLCAST_START" then
       -- cast started, register this
       -- {raider}
       --local cast = cw_spells[castUID]
       --if not cast then
-        --cast = {UnitName(target)}
-        --cw_spells[castUID] = cast
-        --db(cast[1])
+      --cast = {UnitName(target)}
+      --cw_spells[castUID] = cast
+      --db(cast[1])
       --end
 
     elseif event == "UNIT_SPELLCAST_CHANNEL_UPDATE" then
@@ -607,11 +664,12 @@ local summon = {
       -- end of cast, into channel
     elseif event == "UNIT_SPELLCAST_DELAYED" then
       -- presumably if you get hit while casting
-    elseif event == "UNIT_SPELLCAST_INTERRUPTED"
-        or event == "UNIT_SPELLCAST_FAILED"
-        or event == "UNIT_SPELLCAST_STOP"
+    elseif event == "UNIT_SPELLCAST_STOP"
         or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
-      -- cast got cancelled for whatever reason
+      -- this is a normal end of cast
+    elseif event == "UNIT_SPELLCAST_INTERRUPTED"
+        or event == "UNIT_SPELLCAST_FAILED" then
+      -- something went wrong
       -- no castid for stop lol
       addonData.summon.summonFail(g_self)
     end

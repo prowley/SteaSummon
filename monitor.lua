@@ -4,13 +4,14 @@ local addonName, addonData = ...
 
 local monitor = {
   sec_t = {},
-  sec30_t = {},
+  long_t = {},
 
   init = function(self)
+    addonData.debug:registerCategory("monitor")
     self.sec_t = self:create(1, self.callback_sec)
-    self.sec30_t = self:create(30, self.callback_30)
+    self.long = self:create(5, self.callback_long)
     self:start()
-    self.sec30_t:Play()
+    self.long:Play()
   end,
 
   create = function(self, i, callback)
@@ -35,7 +36,7 @@ local monitor = {
     addonData.summon:tick()
   end,
 
-  callback_30 = function(self, event, ...)
+  callback_long = function(self, event, ...)
     addonData.raid:fishArea()
   end
 }

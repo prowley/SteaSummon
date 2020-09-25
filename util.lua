@@ -1,6 +1,10 @@
 local addonName, addonData = ...
 
 local util = {
+  init = function(self)
+    addonData.debug:registerCategory("util")
+  end,
+
   trim = function(self, s)
     return (s:gsub("^%s*(.-)%s*$", "%1"))
   end,
@@ -66,25 +70,22 @@ local util = {
   playerClose = function(self, player)
     local me, void = UnitName("player")
     player = strsplit("-", player) -- might turn up as player-server
-
+    --print("player", player)
 
     if me == player or player == "player" then
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
 
-
     return IsSpellInRange("Unending Breath", player)
   end,
 
   playerCanSummon = function(self, player)
-    local server
     if player == nil then player = "player" end
-
     player = strsplit("-", player) -- might turn up as player-server
+    local _, class = UnitClass(player)
 
-    local class, englishClass = UnitClass(player)
     local level = UnitLevel(player)
-    return class == "Warlock" and level >= 20
+    return class == "WARLOCK" and level >= 20
   end,
 }
 

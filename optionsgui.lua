@@ -26,7 +26,7 @@ optionsgui = {
           wnddesc = {
             order = 1,
             type = "description",
-            name = "Change when to display and the size of the interface. Set the window to always show before adjusting size in order to see the results."
+            name = "Change when to display and the scale of the interface. Set the window to always show before adjusting scale in order to see the results."
           },
           enable = {
             order = 6,
@@ -52,8 +52,8 @@ optionsgui = {
           windowSize = {
             order = 4,
             type = "range",
-            name = "Summon window size",
-            desc = "Changes the size of the window. It helps to have show always set to see the effect while setting.",
+            name = "Summon window scale",
+            desc = "Changes the scale of the window. It helps to have show always set to see the effect while setting.",
             min = 0.1,
             max = 2,
             softMin = 0.3,
@@ -72,8 +72,8 @@ optionsgui = {
           listSize = {
             order = 5,
             type = "range",
-            name = "Summon list size",
-            desc = "Changes the size of the window contents. It helps to have show always set to see the effect while setting.",
+            name = "Summon list scale",
+            desc = "Changes the scale of the window contents. It helps to have show always set to see the effect while setting.",
             min = 0.1,
             max = 3,
             softMin = 0.3,
@@ -260,10 +260,10 @@ optionsgui = {
              width = "full",
              descStyle = "inline",
              set = function(info, val)
-               SteaSummonSave.debug = val
+               SteaDEBUG.on = val
              end,
              get = function(info)
-               return SteaSummonSave.debug
+               return SteaDEBUG.on
              end
            },
            experimental = {
@@ -281,7 +281,7 @@ optionsgui = {
              end
            },
            reset = {
-             order = -1,
+             order = 8,
              name = "Reset to Defaults",
              desc = "Reset all options to the default values",
              type = "execute",
@@ -300,7 +300,20 @@ optionsgui = {
              get = function(info)
                return SteaSummonSave.updates
              end
-          },
+           },
+           buildheader = {
+             order = 10,
+             type = "header",
+             name = "Version Details"
+           },
+           build = {
+             order = 11,
+             type = "description",
+             name = function()
+               local version, build, date, tocversion = GetBuildInfo()
+               return "version: " .. version .. "\nbuild: " .. build .. "\ndate: " .. date .. "\ntocversion: " .. tocversion .. "\n\nSteaSummon v" .. GetAddOnMetadata("SteaSummon", "Version")
+             end
+           },
          }
       }
     },
