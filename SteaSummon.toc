@@ -2,7 +2,7 @@
 ## Title: SteaSummon
 ## Notes: Warlock Summoning
 ## Author: Stea
-## Version: 0.44
+## Version: 0.45
 ## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG
 
 
