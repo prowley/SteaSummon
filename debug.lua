@@ -5,8 +5,14 @@
 -- later, it might be about directing that output to another frame
 
 -- categories can be dot delimited into sub categories e.g. "example.subexample"
--- so that any request to view category example will also list example.subexample (example need never actually be logged
--- and probably shouldn't be because it would be impossible to just view the category example alone)
+-- so that any request to view category example will also list example.subexample (example need never actually be
+-- logged or displayed)
+-- when registering a child category before its parent, all ancestors are also registered with the same log flag
+-- if you want to create gaps in what is logged in a category tree, take care with how you register categories
+-- e.g.
+-- registerCategory("example.subexample") -- example and subexample logged
+-- registerCategory("example.subexample.notofinterest", false) -- example.subexample.notofinterest not logged
+-- registerCategory("example.subexample.notofinterest.butthisis") example.subexample.notofinterest.butthisis logged
 
 local addonName, addonData = ...
 local aboveLogLevel = 1000001
@@ -18,16 +24,25 @@ local debug = {
   l_logAbove = -1,
   l_printAbove = -1,
   l_printBelow = aboveLogLevel,
-  chat = true,
-  chatcat = nil,
+  chatFlag = true,
+  chatCats = {},
   category = {},
   categoryLog = {},
-  categoryRev = {},
+  categoryChildren = {},
 
   init = function(self)
     if not SteaDEBUG or not SteaDEBUG.log then
       self:reset()
     end
+
+    -- wow does auto placement of moveable frames, cool
+    -- what is not cool is that this placement/sizing happens at some undetermined time after creation
+    -- and specifically leaves all the sizing for children at the point of creation
+    -- when the window was a different size. I don't know of any event that can be listened to for this.
+    -- So.. we have to build the main frame here without content,
+    -- later when we come to want to see it, build all the children, from that point on
+    -- we can keep things properly sized - see the buildContent() for the rest
+    --- if anyone knows a better or simpler fix for this, please let me know
 
     local f = CreateFrame("Frame", "DBFrame", UIParent, "AnimatedShineTemplate")
     f:SetPoint("CENTER")
@@ -64,14 +79,6 @@ local debug = {
     f:SetResizable(true)
     f:SetMinResize(150, 100)
     f:Hide()
-
-    -- wow does auto placement of a moveable frames, cool
-    -- what is not cool is that this happens at some undetermined time after creation
-    -- and specifically leaves all the sizing for children at the point of creation
-    -- when the window was a different size. So.. we have to build the main frame here,
-    -- later when we come to want to see it, build all the children, from that point on
-    -- we can keep things properly sized - see the buildContent() for the rest
-    --- if anyone knows a better, simpler fix for this, please let me know
   end,
 
   buildContent = function(self)
@@ -181,19 +188,38 @@ local debug = {
     end
   end,
 
-  chat = function(self, chatBool, cat)
-    debug.chat = chatBool
+  chatCatSwitch = function(self, chatBool)
+    self.chatFlag = chatBool
 
-    if debug.chat then
-      db(debug.loglevel, "Debug out to chat on")
+    if self.chatFlag then
+      local cats = "{"
+      local first = true
+      for k,_ in pairs(self.chatCats) do
+        if not first then
+          cats = cats .. ", "
+        end
+        first = false
+        cats = cats .. k
+      end
+       cats = cats .. "}"
+      db(self.loglevel, "Debug out to chat is set to ON for categories: ", cats)
     else
-      db(debug.loglevel, "Debug out to chat off")
+      db(self.loglevel, "Debug out to chat is set to OFF - why is this here?")
     end
+  end,
 
-    if cat ~= nil then
-      db(debug.loglevel, "category", chat, "set as chat output")
-      debug.chatcat = cat
+  chatCat = function(self, cat)
+    ret = false
+    if self.category[cat] then
+      db(self.loglevel, "Added debug category", cat, "to debug out")
+      self.chatCats[cat] = 1
+      for k,_ in pairs(self.categoryChildren[cat]) do
+        self:chatCat(k)
+      end
+    else
+      db(self.loglevel, "Debug category", cat, "has not been registered")
     end
+    return ret
   end,
 
   printAbove = function(self, above)
@@ -218,24 +244,47 @@ local debug = {
 
   registerCategory = function(self, category_in, log)
     local cat = category_in
+    local child = nil
+    local last = nil
 
     while not self.category[cat] do
+      self.categoryChildren[cat] = {}
       self.category[cat] = 1
-      table.insert(self.categoryRev, cat)
       if log == nil or log then
         self.categoryLog[cat] = 1
       end
       db(self.loglevel, "registered debug category:", cat)
 
       -- sub cats
+      child = cat
       doti = cat.find(cat, "%.[^%.]*$") -- last dot
 
       if doti ~= nil then
         cat = string.sub(cat, 1, doti - 1)
       end
+
+      local parent
+      if cat ~= child then
+        parent = cat
+      end
+
+      -- link parent
+      if parent and self.categoryChildren[parent] then
+        db(self.loglevel, "added child:", child,"for", parent)
+        self.categoryChildren[parent][child] = 1
+      end
+
+      -- find children
+      -- the parent may be created after the first child
+      -- if this is the parent node of a child we created in last loop it won't be linked yet
+      if last ~= nil then
+        self.categoryChildren[child][last] = 1
+        db(self.loglevel, "added child:", last,"for", child)
+      end
+
+      last = child
     end
-    table.sort(self.categoryRev)
-  end
+  end,
 }
 
 -- global
@@ -247,7 +296,7 @@ function db(target, ...)
       if  type(target) == "number" then
         -- chat
         if target > debug.l_printAbove and target < debug.l_printBelow then
-          if debug.chat then
+          if debug.chatFlag then
             prePrint = target
           end
         end
@@ -258,13 +307,14 @@ function db(target, ...)
         end
       else -- category string
         -- chat
-        if debug.chatcat ~= nil then
-          top = string.substr(target, 1, #debug.chatcat)
-          if debug.chat and top == debug.chatcat then
+        if #debug.chatCats then
+          if debug.chatFlag and debug.chatCats[target] then
             prePrint = target
           end
         else
-          prePrint = target
+          if debug.chatFlag then
+            prePrint = target
+          end
         end
 
         -- logging

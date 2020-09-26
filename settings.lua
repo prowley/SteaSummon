@@ -47,6 +47,12 @@ settings = {
     if SteaSummonSave.listSize == nil then
       SteaSummonSave.listSize = 1.5
     end
+
+    if SteaSummonSave.waiting == nil then
+      SteaSummonSave.waiting = {}
+      SteaSummonSave.timeStamp = 0
+      SteaSummonSave.waitingKeepTime = 0
+    end
   end,
 
   reset = function(self)
@@ -63,6 +69,9 @@ settings = {
     SteaSummonSave.experimental = false
     SteaSummonSave.windowSize = 1
     SteaSummonSave.listSize = 1.5
+    SteaSummonSave.waiting = {}
+    SteaSummonSave.timeStamp = 0
+    SteaSummonSave.waitingKeepTime = 5
   end,
 
   findSummonWord = function(self, phrase)

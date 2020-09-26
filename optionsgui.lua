@@ -14,7 +14,7 @@ optionsgui = {
         name = "One button summoning, shared summoning list..."
       },
       general = {
-        name = "Window",
+        name = "General",
         type = "group",
         order = 0,
         args = {
@@ -47,6 +47,35 @@ optionsgui = {
             end,
             get = function(info)
               return SteaSummonSave.show
+            end,
+          },
+          sumheader = {
+            order = 7,
+            type = "header",
+            name = "Summon Options"
+          },
+          sumdesc = {
+            order = 8,
+            type = "description",
+            name = "Change how the summon list behaves"
+          },
+          keep = {
+            order = 9,
+            type = "range",
+            name = "Summon list save time (in minutes)",
+            desc = "How long to preserve the summon list between logins",
+            min = 0,
+            max = 300,
+            softMin = 0,
+            softMax = 59,
+            step = 1,
+            bigStep = 1,
+            width = "full",
+            set = function(info, val)
+              SteaSummonSave.waitingKeepTime = val
+            end,
+            get = function(info)
+              return SteaSummonSave.waitingKeepTime
             end,
           },
           windowSize = {

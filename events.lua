@@ -15,6 +15,7 @@ function start()
   call["CHAT_MSG_RAID_LEADER"] = addonData.chat.callback
   call["CHAT_MSG_ADDON"] = addonData.gossip.callback
   call["CHAT_MSG_SAY"] = addonData.chat.callback
+  call["CHAT_MSG_WHISPER"] = addonData.chat.callback
   call["PARTY_LEADER_CHANGED"] = addonData.gossip.callback
   call["GROUP_ROSTER_UPDATE"] = addonData.raid.callback
   call["RAID_ROSTER_UPDATE"] = addonData.raid.callback
@@ -65,9 +66,9 @@ function loaded(self, event, ...)
     addonData.debug:printBelow(addonData.debug.loglevel + 1) -- I want to see the debug module debug
     addonData.debug:logBelow(addonData.debug.loglevel + 1) -- also want it logged
 
-    addonData.debug:registerCategory("event")
-    db("event", "------------- NEW SESSION -------------")
-    db("event", "loaded", event, ...)
+    addonData.debug:registerCategory("event.event")
+    db("event.event", "------------- NEW SESSION -------------")
+    db("event.event", "loaded", event, ...)
 
     -- init modules
     addonData.settings:init()
@@ -78,6 +79,13 @@ function loaded(self, event, ...)
     addonData.chat:init()
     addonData.monitor:init()
     addonData.util:init()
+    addonData.buffs:init()
+
+    -- wait to set up debug categories until all categories are registered
+    -- otherwise the category or its children may not be registered for chat debug messages
+    addonData.debug:chatCat("raid")
+    addonData.debug:chatCat("buffs")
+    addonData.debug:chatCatSwitch(true)
 
     -- register addon comms channel
     addonData.channel = "SteaSummon"

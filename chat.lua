@@ -16,7 +16,7 @@ local chat = {
       return
     end
 
-    db("testing chat for keywords")
+    db("chat", "testing chat for keywords")
 
     if player == me then
       if msg and msg:find("!SS") == 1 then
@@ -25,7 +25,7 @@ local chat = {
         if args == nil then args = "" end
         cmd = string.lower(cmd)
 
-        db("Received command : " .. cmd .. " " .. args)
+        db("chat","Received command : " .. cmd .. " " .. args)
         if cmd == "list" then
           local waitlist = addonData.summon:getWaiting()
           cprint("Summon wait list")
@@ -61,10 +61,16 @@ local chat = {
     if msg and addonData.settings:findSummonWord(msg) then
       -- someone wants a summon
       name, server = strsplit("-", servername)
-      db("adding ", name, "to summon list")
+      db("chat","adding ", name, "to summon list")
 
-      addonData.summon:addWaiting(name)
-    end
+      if IsInGroup(player) or player == me then
+        addonData.summon:addWaiting(name)
+      end
+
+      if event == "CHAT_MSG_WHISPER" then
+
+      end
+      end
   end,
 
   raid = function(self, msg, player)

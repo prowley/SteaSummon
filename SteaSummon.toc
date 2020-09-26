@@ -10,7 +10,7 @@ Libs\embeds.xml
 
 debug.lua
 util.lua
-wordlist.lua
+buffs.lua
 settings.lua
 optionsgui.lua
 raid.lua
