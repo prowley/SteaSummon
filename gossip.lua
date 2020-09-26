@@ -6,11 +6,25 @@ local addonName, addonData = ...
 -- protocol
 -----------
 -- a arrived
+-- ad add player
 -- d destination
 -- TODO: e election (reduce network traffic by having leader do the thing, right now everyone replies to i - packet storm)
 -- i initialize me
 -- l waiting list
 -- s status
+
+
+-- elections
+------------
+-- every 1-2 mins (random for each client) an election is called with an election id
+-- each node of the network creates a random number and broadcasts
+-- there is a 5 second window for replies
+-- At election close each member of the network broadcasts the two highest rollers (summoning warlocks are preferred)
+-- The result of the final tally elects a leader and a deputy
+-- The leader performs broadcast operations such as initialize()
+-- If the leader goes offline or leaves the raid, the deputy takes over and an immediate election is called
+-- each broadcast operation is monitored by all others in the network, should the leader fail to respond within
+-- 5 seconds all nodes respond, and an immediate election is called
 
 
 
@@ -44,6 +58,15 @@ local gossip = {
 
     db("gossip", ">> arrived >>", player)
     C_ChatInfo.SendAddonMessage(addonData.channel, "a " .. player, "RAID")
+  end,
+
+  add = function(self, player)
+    if not addonData.settings:useUpdates() then
+      return
+    end
+
+    db("gossip", ">> add >>", player)
+    C_ChatInfo.SendAddonMessage(addonData.channel, "ad " .. player, "RAID")
   end,
 
   destination = function(self, zone, location)
@@ -82,6 +105,9 @@ local gossip = {
     elseif cmd == "a" then
       db("gossip", "<< arrived <<", subcmd)
       addonData.summon:arrived(subcmd)
+    elseif cmd == "ad" then
+      db("gossip", "<< add <<", subcmd)
+      addonData.summon:addWaiting(subcmd)
     elseif cmd == "i" then
       db("gossip", "<< initialize request <<")
       if addonData.summon.numwaiting then

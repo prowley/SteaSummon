@@ -20,12 +20,17 @@ local summon = {
     addonData.debug:registerCategory("summon.tick")
     addonData.debug:registerCategory("summon.misc")
     addonData.debug:registerCategory("summon.spellcast")
+
+    self.waiting = SteaSummonSave.waiting
+    if not IsInGroup() or (SteaSummonSave.timeStamp - GetTime() > SteaSummonSave.waitingKeepTime * 60) then
+      wipe(self.waiting)
+    end
   end,
 
   ---------------------------------
   addWaiting = function(self, player)
     if self:findWaitingPlayerIdx(player) then
-      self.waiting[3] = "requested"
+      self.waiting[3] = "requested" -- allow those in summon queue to reset status when things go wrong
       return
     end
     player = strsplit("-", player)
@@ -33,6 +38,9 @@ local summon = {
     self.numwaiting = self.numwaiting + 1
 
     -- priorities
+
+    local buffs = addonData.buffs:report(player) -- that's all for now, just observing
+
     local inserted = false
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
       db("summon.waitlist", "Warlock " .. player .. " gets prio")
@@ -254,9 +262,15 @@ local summon = {
         self:enableButton(i)
         player = self.waiting[i][1]
         addonData.buttons[i].Button:SetText(player)
-        _, class = UnitClass(player)
-        r,g,b,_ = GetClassColor(class)
-        addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
+
+        if self.waiting[i][3] == "offline" then
+          addonData.buttons[i].Status["FS"]:SetTextColor(1,1,1, 1)
+        else
+          _, class = UnitClass(player)
+          r,g,b,_ = GetClassColor(class)
+          addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
+        end
+
         if (addonData.util:playerCanSummon()) then
           addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast Ritual of Summoning")
         end
