@@ -44,15 +44,17 @@ function callback(self, event, ...)
 end
 
 function playerEnter(event, ...)
-  db("event", "player entering world")
+  db("event.event","player entering world")
 
   -- register events
   for k,v in pairs(call) do
     if k ~= "ADDON_LOADED" then
-      db("event","registering event", k)
+      db("event.event","registering event", k)
       frame:RegisterEvent(k)
     end
   end
+
+  addonData.summon:showSummons()
 end
 
 function loaded(self, event, ...)
@@ -87,14 +89,13 @@ function loaded(self, event, ...)
     addonData.debug:chatCat("buffs")
     addonData.debug:chatCat("summon.waitlist")
     addonData.debug:chatCat("summon.display")
+    addonData.debug:chatCat("event.event")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
     -- register addon comms channel
     addonData.channel = "SteaSummon"
     local commsgood = C_ChatInfo.RegisterAddonMessagePrefix(addonData.channel)
-    db("event","addon channel registered: ", commsgood)
+    db("event.event","addon channel registered: ", commsgood)
     cprint("loaded")
-
-    addonData.summon:showSummons()
   end
 end

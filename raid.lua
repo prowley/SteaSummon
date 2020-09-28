@@ -25,13 +25,14 @@ local raid = {
   end,
 
   callback = function(self, event, ...)
-    db("event", event, ...)
+    db("raid.event", event, ...)
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
       --addonData.raid:updateRaid()
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
+      db("raid", event)
       addonData.gossip:initialize()
     end
   end,
@@ -46,7 +47,7 @@ local raid = {
       local sizeNow = GetNumGroupMembers()
       if (lastGroupNum ~= sizeNow) then
         -- I want to know if this ever fires, even if I am not monitoring the raid category
-        db("Groups size was", lastGroupNum, "but is now", sizeNow)
+        db("Group size was", lastGroupNum, "but is now", sizeNow)
         break -- protect the list
       end
       local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
