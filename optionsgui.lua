@@ -199,14 +199,14 @@ optionsgui = {
           desc = {
             order = 1,
             type = "description",
-            name = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list."
+            name = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list. Players can also type '-' (minus) and then a trigger phrase to be removed from the list."
           },
           summonWords = {
             order = -1,
             name = "Trigger phrases for summon. One per line.",
             desc = "chat lines that will add a summon request for the raider",
             type = "input",
-            multiline = 25,
+            multiline = 23,
             width = "full",
             set = function(info, val)
               SteaSummonSave.summonWords = addonData.util:multiLineToTable(val)

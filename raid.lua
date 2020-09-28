@@ -18,6 +18,7 @@ local dead = {}
 
 local raid = {
   inzone = {},
+  caninvite = {},
 
   init = function(self)
     addonData.debug:registerCategory("raid.event")
@@ -88,6 +89,12 @@ local raid = {
           db("raid", name, "left the zone.")
           self.inzone[name] = nil
         end
+      end
+
+      if rank > 0 then
+        self.caninvite[name] = true
+      else
+        self.caninvite[name] = false
       end
     end
 
