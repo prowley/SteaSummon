@@ -144,7 +144,7 @@ local summon = {
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
       db("summon.waitlist", "Warlock " .. player .. " gets prio")
-      self:recAdd(self:waitRecord(player, 0, "requested", "warlock"), 1)
+      self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"), 1)
       inserted = true
     end
 
@@ -153,7 +153,7 @@ local summon = {
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
         if not (self:recPrio(wait) == "warlock" or self:recPrio(wait) == "buffed") then
-          self:recAdd(self:waitRecord(player, 0, "requested", "buffed"), k)
+          self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
           break
@@ -166,7 +166,7 @@ local summon = {
       for k, wait in pairs(self.waiting) do
         if not (self:recPrio(wait) == "warlock" or self:recPrio(wait) == "buffed"
             or addonData.settings:findPrioPlayer(self:recPlayer(wait))) then
-          self:recAdd(self:waitRecord(player, 0, "requested", "prioritized"), k)
+          self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"), k)
           db("summon.waitlist", "Priority " .. player .. " gets prio")
           inserted = true
           break
@@ -176,7 +176,7 @@ local summon = {
 
     -- Prio last
     if not inserted and addonData.settings:findShitlistPlayer(player) ~= nil then
-      self:recAdd(self:waitRecord(player, 0, "requested", "last"))
+      self:recAdd(self:waitRecord(player, 0, "requested", "Last"))
       inserted = true
     end
 
@@ -190,7 +190,7 @@ local summon = {
         db("summon.waitlist", self:recPlayer(self.waiting[i-1]), "on shitlist, finding a better spot")
         i = i - 1
       end
-      self:recAdd(self:waitRecord(player, 0, "requested", "normal"), i)
+      self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
     db("summon.waitlist", player .. " added to waiting list")
@@ -248,12 +248,12 @@ local summon = {
       f:SetSize(300, 250)
       f:SetScale(SteaSummonSave.windowSize)
       local wpos = addonData.settings:getWindowPos()
-      if wpos and #wpos > 0 then
+      if wpos and #wpos then
+        cprint("summon.display",  wpos[1], wpos[2], wpos[3], wpos[4], wpos[5], "width:", wpos["width"], "height:", wpos["height"])
         f:ClearAllPoints()
         f:SetPoint(wpos[1], wpos[2], wpos[3], wpos[4], wpos[5])
         --f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", wpos["left"], wpos["top"])
         f:SetSize(wpos["width"], wpos["height"])
-        db("summon.display",  wpos[1], wpos[2], wpos[3], wpos[4], wpos[5], "width:", wpos["width"], "height:", wpos["height"])
       end
 
       f:SetBackdrop({
@@ -297,15 +297,15 @@ local summon = {
         end
 
         if pos["height"] < 42 then
-          ShardIcon:Hide()
+          if ShardIcon then ShardIcon:Hide() end
         else
-          ShardIcon:Show()
+          if ShardIcon then ShardIcon:Show() end
         end
 
         if pos["height"] < 26 then
-          SummonToButton:Hide()
+          if SummonToButton then SummonToButton:Hide() end
         else
-          SummonToButton:Show()
+          if SummonToButton then SummonToButton:Show() end
         end
 
         if pos["width"] < 140 then
@@ -443,6 +443,7 @@ local summon = {
         self:enableButton(i)
         player = self:recPlayer(self.waiting[i])
         addonData.buttons[i].Button:SetText(player)
+        addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[1]), 1, 1))
 
         if self:recStatus(self.waiting[i]) == "offline" then
           addonData.buttons[i].Status["FS"]:SetTextColor(0.2,0.2,0.2, 1)
@@ -573,7 +574,7 @@ local summon = {
     -- Summon Button
     local bw = 80
     local bh = 25
-    local wpad = 40
+    local wpad = 30
     local hpad = 20
 
     local parent = addonData.buttonFrame
@@ -650,7 +651,7 @@ local summon = {
       addonData.buttons[i].Time = CreateFrame("Frame", "SummonWaitTime"..i, addonData.buttonFrame)
       addonData.buttons[i].Time:SetWidth(bw)
       addonData.buttons[i].Time:SetHeight(bh)
-      addonData.buttons[i].Time:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 90,-((i*bh)+hpad))
+      addonData.buttons[i].Time:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 108,-((i*bh)+hpad))
       addonData.buttons[i].Time:SetBackdrop( {
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -667,11 +668,32 @@ local summon = {
       addonData.buttons[i].Time["FS"]:SetFontObject("GameFontNormalSmall")
       addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(0)))
 
+      -- Priority
+      addonData.buttons[i].Priority = CreateFrame("Frame", "SummonPriority"..i, addonData.buttonFrame)
+      addonData.buttons[i].Priority:SetWidth(bh)
+      addonData.buttons[i].Priority:SetHeight(bh)
+      addonData.buttons[i].Priority:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 1,-((i*bh)+hpad))
+      addonData.buttons[i].Priority:SetBackdrop( {
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 5, edgeSize = 15, insets = { left = 1, right = 1, top = 1, bottom = 1 }
+      });
+      addonData.buttons[i].Priority["FS"] = addonData.buttons[i].Priority:CreateFontString("StatusText"..i,"ARTWORK", "ChatFontNormal")
+      addonData.buttons[i].Priority["FS"]:SetParent(addonData.buttons[i].Priority)
+      addonData.buttons[i].Priority["FS"]:SetPoint("TOP",addonData.buttons[i].Priority,"TOP",0,0)
+      addonData.buttons[i].Priority["FS"]:SetWidth(bh)
+      addonData.buttons[i].Priority["FS"]:SetHeight(bh)
+      addonData.buttons[i].Priority["FS"]:SetJustifyH("CENTER")
+      addonData.buttons[i].Priority["FS"]:SetJustifyV("CENTER")
+      addonData.buttons[i].Priority["FS"]:SetFontObject("GameFontNormalSmall")
+      addonData.buttons[i].Priority["FS"]:SetTextColor(1,1,1)
+      addonData.buttons[i].Priority["FS"]:SetText("N")
+
       -- Status
       addonData.buttons[i].Status = CreateFrame("Frame", "SummonStatus"..i, addonData.buttonFrame)
       addonData.buttons[i].Status:SetWidth(bw)
       addonData.buttons[i].Status:SetHeight(bh)
-      addonData.buttons[i].Status:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 5,-((i*bh)+hpad))
+      addonData.buttons[i].Status:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 27,-((i*bh)+hpad))
       addonData.buttons[i].Status:SetBackdrop( {
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -702,6 +724,7 @@ local summon = {
         addonData.buttons[idx].Cancel:Show()
         addonData.buttons[idx].Time:Show()
         addonData.buttons[idx].Status:Show()
+        addonData.buttons[idx].Priority:Show()
         addonData.buttons[idx].Button:Enable()
       end
     else
@@ -710,6 +733,7 @@ local summon = {
         addonData.buttons[idx].Cancel:Hide()
         addonData.buttons[idx].Time:Hide()
         addonData.buttons[idx].Status:Hide()
+        addonData.buttons[idx].Priority:Hide()
         addonData.buttons[idx].Button:Enable()
       end
     end

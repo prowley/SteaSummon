@@ -57,6 +57,10 @@ settings = {
     if SteaSummonSave.buffs == nil then
       SteaSummonSave.buffs = true
     end
+
+    if SteaSummonSave.windowPos == nil then
+      SteaSummonSave.windowPos = {}
+    end
   end,
 
   reset = function(self)
@@ -77,6 +81,7 @@ settings = {
     SteaSummonSave.timeStamp = 0
     SteaSummonSave.waitingKeepTime = 5
     SteaSummonSave.buffs = true
+    SteaSummonSave.windowPos = {}
   end,
 
   findSummonWord = function(self, phrase)
@@ -138,11 +143,11 @@ settings = {
   end,
 
   getWindowPos = function(self)
-    return SteaSummonSave.winowpos
+    return SteaSummonSave.winowPos
   end,
 
   setWindowPos = function(self, pos)
-    SteaSummonSave.winowpos = pos
+    SteaSummonSave.winowPos = pos
   end,
 }
 
