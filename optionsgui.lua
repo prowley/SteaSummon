@@ -10,6 +10,8 @@ optionsgui = {
     args = {
       desc = {
         order = 0,
+        image = "Interface/ICONS/Spell_Shadow_Twilight",
+        imageCoords = {0,1,0,1},
         type = "description",
         name = "One button summoning, shared summoning list..."
       },
@@ -24,9 +26,10 @@ optionsgui = {
             name = "Window Options"
           },
           wnddesc = {
-            order = 1,
+            order = 4,
             type = "description",
-            name = "Change when to display and the scale of the interface. Set the window to always show before adjusting scale in order to see the results."
+            width = "normal",
+            name = "Change the scale of the interface. Set the window to always show before adjusting scale in order to see the results."
           },
           enable = {
             order = 6,
@@ -49,15 +52,22 @@ optionsgui = {
               return SteaSummonSave.show
             end,
           },
-          sumheader = {
+          wndshowdesc = {
+            order = 7,
+            type = "description",
+            width = "normal",
+            name = "Change when to display interface. Always, when there is someone waiting to be summoned, when you are in the summon list, or never"
+          },
+          --[[sumheader = {
             order = 7,
             type = "header",
             name = "Summon Options"
-          },
-          sumdesc = {
-            order = 8,
+          },]]
+          savedesc = {
+            order = 10,
             type = "description",
-            name = "Change how the summon list behaves"
+            width = "normal",
+            name = "If you are in a group when you log back in within this time, your summon list is preserved"
           },
           keep = {
             order = 9,
@@ -70,7 +80,7 @@ optionsgui = {
             softMax = 59,
             step = 1,
             bigStep = 1,
-            width = "full",
+            width = "double",
             set = function(info, val)
               SteaSummonSave.waitingKeepTime = val
             end,
@@ -79,7 +89,7 @@ optionsgui = {
             end,
           },
           windowSize = {
-            order = 4,
+            order = 2,
             type = "range",
             name = "Summon window scale",
             desc = "Changes the scale of the window. It helps to have show always set to see the effect while setting.",
@@ -89,7 +99,7 @@ optionsgui = {
             softMax = 3,
             step = 0.1,
             bigStep = 0.1,
-            width = "full",
+            width = "normal",
             set = function(info, val)
               SteaSummonSave.windowSize = val
               SummonFrame:SetScale(val)
@@ -99,7 +109,7 @@ optionsgui = {
             end,
           },
           listSize = {
-            order = 5,
+            order = 3,
             type = "range",
             name = "Summon list scale",
             desc = "Changes the scale of the window contents. It helps to have show always set to see the effect while setting.",
@@ -109,7 +119,7 @@ optionsgui = {
             softMax = 3,
             step = 0.1,
             bigStep = 0.1,
-            width = "full",
+            width = "normal",
             set = function(info, val)
               SteaSummonSave.listSize = val
               ButtonFrame:SetScale(val)
@@ -189,14 +199,14 @@ optionsgui = {
           desc = {
             order = 1,
             type = "description",
-            name = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list."
+            name = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list. Players can also type '-' (minus) and then a trigger phrase to be removed from the list."
           },
           summonWords = {
             order = -1,
             name = "Trigger phrases for summon. One per line.",
             desc = "chat lines that will add a summon request for the raider",
             type = "input",
-            multiline = 25,
+            multiline = 23,
             width = "full",
             set = function(info, val)
               SteaSummonSave.summonWords = addonData.util:multiLineToTable(val)
@@ -236,13 +246,27 @@ optionsgui = {
               return SteaSummonSave.warlocks
             end
           },
-          names = {
+          buffs = {
             order = 3,
+            name = "Prioritize buffed players",
+            desc = "Put players with world buffs ahead of named priority players",
+            type = "toggle",
+            width = "full",
+            descStyle = "inline",
+            set = function(info, val)
+              SteaSummonSave.buffs = val
+            end,
+            get = function(info)
+              return SteaSummonSave.buffs
+            end
+          },
+          names = {
+            order = 6,
             name = "Players to summon first, if by first, you mean behind warlocks. One player per line.",
             desc = "These players will move to the front of the summon list when they request a summon",
             width = "full",
             type = "input",
-            multiline = 8,
+            multiline = 7,
             set = function(info, val)
               SteaSummonSave.prioplayers = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
             end,
@@ -251,12 +275,12 @@ optionsgui = {
             end
           },
           last = {
-            order = 4,
+            order = 8,
             name = "Players to summon last. Some people should just be nicer. One player per line.",
             desc = "These players will move to the back of the summon list and stay there",
             width = "full",
             type = "input",
-            multiline = 8,
+            multiline = 7,
             set = function(info, val)
               SteaSummonSave.shitlist = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
             end,

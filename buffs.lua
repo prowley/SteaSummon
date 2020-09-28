@@ -91,10 +91,6 @@ buffs = {
       end
     end
 
-    if #out == 0 then
-      out = nil
-    end
-
     return out
   end,
 }

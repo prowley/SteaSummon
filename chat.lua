@@ -58,19 +58,23 @@ local chat = {
       end
     end
 
-    if msg and addonData.settings:findSummonWord(msg) then
-      -- someone wants a summon
-      name, server = strsplit("-", servername)
-      db("chat","adding ", name, "to summon list")
+    if msg then
+      if string.sub(msg, 1,1) == "-" and addonData.settings:findSummonWord(string.sub(msg, 2)) then
+        name, server = strsplit("-", servername)
+        addonData.summon:remove(name)
+      elseif addonData.settings:findSummonWord(msg) then
+        -- someone wants a summon
+        name, server = strsplit("-", servername)
+        db("chat","adding ", name, "to summon list")
 
-      if IsInGroup(player) or player == me then
-        addonData.summon:addWaiting(name)
+        if IsInGroup(player) or player == me then
+          addonData.summon:addWaiting(name, true)
+          if event == "CHAT_MSG_WHISPER" then
+            addonData.gossip:add(player)
+          end
+        end
       end
-
-      if event == "CHAT_MSG_WHISPER" then
-
-      end
-      end
+    end
   end,
 
   raid = function(self, msg, player)

@@ -85,7 +85,9 @@ function loaded(self, event, ...)
     -- otherwise the category or its children may not be registered for chat debug messages
     addonData.debug:chatCat("raid")
     addonData.debug:chatCat("buffs")
-    addonData.debug:chatCatSwitch(true)
+    addonData.debug:chatCat("summon.waitlist")
+    addonData.debug:chatCat("summon.display")
+    addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
     -- register addon comms channel
     addonData.channel = "SteaSummon"
