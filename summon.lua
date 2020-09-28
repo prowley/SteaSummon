@@ -16,6 +16,7 @@ local summon = {
   shards = 0, -- the number of shards in our bag
   isWarlock = false,
   infoSend = false,
+  me = "",
 
   ---------------------------------
   init = function(self)
@@ -26,6 +27,8 @@ local summon = {
     addonData.debug:registerCategory("summon.spellcast")
 
     self.isWarlock = addonData.util:playerIsWarlock()
+    self.me, _ = UnitName("player")
+    self.me = strsplit("-", self.me)
 
     self.waiting = SteaSummonSave.waiting
     if not IsInGroup() or (SteaSummonSave.timeStamp - GetTime() > SteaSummonSave.waitingKeepTime * 60) then
@@ -486,7 +489,7 @@ local summon = {
       -- If summoning warlock, can cancel and send msg to others
       cancelClick = function(otherself, button, worked)
         if button == "LeftButton" and worked then
-          if hasSummoned then
+          if self.hasSummoned or player == self.me then
             addonData.gossip:arrived(player)
           end
           db("summon.display","cancelling ", player)
@@ -530,9 +533,7 @@ local summon = {
     if addonData.settings:showWindow() or (addonData.settings:showActive() and self.numwaiting > 0) then
       show = true
     elseif addonData.settings:showJustMe() then
-      local me, _ = UnitName("player")
-
-      if self:findWaitingPlayer(me) then
+      if self:findWaitingPlayer(self.me) then
         show = true
       end
     end
