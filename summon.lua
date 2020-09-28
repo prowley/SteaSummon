@@ -122,14 +122,20 @@ local summon = {
   end,
 
   ---------------------------------
-  addWaiting = function(self, player)
-    local isWaiting = self:findWaitingPlayer(player)
-    if isWaiting then
-      db("summon.waitlist", "Resetting status of player", player, "to requested")
-      self:recStatus(isWaiting, "requested")-- allow those in summon queue to reset status when things go wrong
-      return
-    end
+  addWaiting = function(self, player, fromPlayer)
     player = strsplit("-", player)
+    if (fromPlayer) then
+      local isWaiting = self:findWaitingPlayer(player)
+      if isWaiting then
+        db("summon.waitlist", "Resetting status of player", player, "to requested")
+        self:recStatus(isWaiting, "requested")-- allow those in summon queue to reset status when things go wrong
+        return
+      end
+    else
+      if self:findWaitingPlayer(player) then
+        return
+      end
+    end
     db("summon.waitlist", "Making some space for ", player)
 
     -- priorities
