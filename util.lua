@@ -76,7 +76,15 @@ local util = {
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
 
-    return IsSpellInRange("Unending Breath", player)
+    return addonData.raid.inzone[player]
+  end,
+
+  playerIsWarlock = function(self, player)
+    if player == nil then player = "player" end
+    player = strsplit("-", player) -- might turn up as player-server
+    local _, class = UnitClass(player)
+
+    return class == "WARLOCK"
   end,
 
   playerCanSummon = function(self, player)
@@ -85,7 +93,7 @@ local util = {
     local _, class = UnitClass(player)
 
     local level = UnitLevel(player)
-    return class == "WARLOCK" and level >= 20
+    return self:playerIsWarlock() and level >= 20
   end,
 }
 

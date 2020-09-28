@@ -53,6 +53,10 @@ settings = {
       SteaSummonSave.timeStamp = 0
       SteaSummonSave.waitingKeepTime = 0
     end
+
+    if SteaSummonSave.buffs == nil then
+      SteaSummonSave.buffs = true
+    end
   end,
 
   reset = function(self)
@@ -72,6 +76,7 @@ settings = {
     SteaSummonSave.waiting = {}
     SteaSummonSave.timeStamp = 0
     SteaSummonSave.waitingKeepTime = 5
+    SteaSummonSave.buffs = true
   end,
 
   findSummonWord = function(self, phrase)
