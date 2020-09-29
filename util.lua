@@ -55,7 +55,7 @@ local util = {
     for i, rec in pair(recs) do
       local player, time, status = strsplit("+", rec)
       if addonData.summon:findWaitingPlayer(player) == nil then
-        table.insert(addonData.summon.waiting, {player, time, status})
+        addonData.summon:addWaiting(player)
       end
     end
     self:sortWaitingTableByTime()
@@ -76,7 +76,10 @@ local util = {
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
 
-    return addonData.raid.inzone[player]
+    if UnitInRange(player) then
+      return true
+    end
+      --return addonData.raid.inzone[player]
   end,
 
   playerIsWarlock = function(self, player)
@@ -93,7 +96,7 @@ local util = {
     local _, class = UnitClass(player)
 
     local level = UnitLevel(player)
-    return self:playerIsWarlock() and level >= 20
+    return self:playerIsWarlock(player) and level >= 20
   end,
 }
 

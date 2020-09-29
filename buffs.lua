@@ -70,7 +70,7 @@ buffs = {
   end,
 
   report = function(self, player)
-    local out, index = {}, 1
+    local out, index, i = {}, 1, 1
 
     while true do
       local name, rank, icon, count, debuffType, duration,
@@ -87,7 +87,8 @@ buffs = {
       db("buffs", player, "has buff", name)
       if self.buffs[name] then
         db("buffs", name, "is of interest")
-        out[index] = {name, icon, (GetTime() - expirationTime) / 60}
+        out[i] = {name, icon}
+        i = i + 1
       end
     end
 

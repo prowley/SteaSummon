@@ -38,7 +38,12 @@ local monitor = {
 
   callback_long = function(self, event, ...)
     addonData.raid:fishArea()
-  end
+  end,
+
+  callback = function(self, event, ...)
+    -- this is a generic debug monitor of events that are under observation
+    db("monitor", event, ...)
+  end,
 }
 
 addonData.monitor = monitor

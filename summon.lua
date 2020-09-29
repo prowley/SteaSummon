@@ -20,6 +20,7 @@ local summon = {
 
   ---------------------------------
   init = function(self)
+    g_self = self
     addonData.debug:registerCategory("summon.display")
     addonData.debug:registerCategory("summon.waitlist.record")
     addonData.debug:registerCategory("summon.tick")
@@ -30,10 +31,16 @@ local summon = {
     self.me, _ = UnitName("player")
     self.me = strsplit("-", self.me)
 
-    self.waiting = SteaSummonSave.waiting
-    if not IsInGroup() or (SteaSummonSave.timeStamp - GetTime() > SteaSummonSave.waitingKeepTime * 60) then
-      wipe(self.waiting)
+    local ts = GetTime()
+    db("summon", "saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
+    if not IsInGroup()
+        or SteaSummonSave.waitingKeepTime == 0
+        or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
+      wipe(SteaSummonSave.waiting)
     end
+
+    self.waiting = SteaSummonSave.waiting
+    self.numwaiting = #self.waiting
   end,
 
   ---------------------------------
@@ -102,7 +109,7 @@ local summon = {
   ---------------------------------
   recRemoveIdx = function(self, idx)
     local ret = false
-    if idx and idx <= #self.waiting then
+    if idx and idx <= self.numwaiting then
       db("summon.waitlist.record", "removing", self:recPlayer(self.waiting[idx]), "from the waiting list")
       table.remove(self.waiting, idx)
       self.numwaiting = self.numwaiting - 1
@@ -114,7 +121,7 @@ local summon = {
   end,
 
   recAdd = function(self, rec, pos)
-    if not pos or pos > #self.waiting then
+    if not pos or pos > self.numwaiting then
       db("summon.waitlist.record","appending record to waiting list for", self:recPlayer(rec))
       table.insert(self.waiting, rec)
     else
@@ -146,34 +153,54 @@ local summon = {
 
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
-      db("summon.waitlist", "Warlock " .. player .. " gets prio")
-      self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"), 1)
-      inserted = true
+      for k, wait in pairs(self.waiting) do
+        if self:recPrio(wait) ~= "Warlock" then
+          db("summon.waitlist", "Warlock", player, "gets prio")
+          self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"), k)
+          inserted = true
+          break
+        end
+      end
+      if not inserted then
+        db("summon.waitlist", "Warlock", player, "gets prio")
+        self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"))
+        inserted = true
+      end
     end
 
     -- Prio buffs
     local buffs = addonData.buffs:report(player) -- that's all for now, just observing
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
-        if not (self:recPrio(wait) == "warlock" or self:recPrio(wait) == "buffed") then
+        if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed") then
           self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
           break
         end
       end
+      if not inserted then
+        self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"))
+        db("summon.waitlist", "Buffed " .. player .. " gets prio")
+        inserted = true
+      end
     end
 
     -- Prio list
     if not inserted and addonData.settings:findPrioPlayer(player) ~= nil then
       for k, wait in pairs(self.waiting) do
-        if not (self:recPrio(wait) == "warlock" or self:recPrio(wait) == "buffed"
+        if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed"
             or addonData.settings:findPrioPlayer(self:recPlayer(wait))) then
           self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"), k)
           db("summon.waitlist", "Priority " .. player .. " gets prio")
           inserted = true
           break
         end
+      end
+      if not inserted then
+        self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"))
+        db("summon.waitlist", "Priority " .. player .. " gets prio")
+        inserted = true
       end
     end
 
@@ -186,25 +213,34 @@ local summon = {
     -- Prio normal
     if not inserted then
       local i = self.numwaiting + 1
-      while i > 1 and self:recPrio(self.waiting[i-1]) == "last"
-          and not (self:recPrio(self.waiting[i-1]) == "buffed"
-          or self:recPrio(self.waiting[i-1]) == "warlock"
-          or self:recPrio(self.waiting[i-1]) == "prioritized") do
+      while i > 1 and self:recPrio(self.waiting[i-1]) == "Last"
+          and not (self:recPrio(self.waiting[i-1]) == "Buffed"
+          or self:recPrio(self.waiting[i-1]) == "Warlock"
+          or self:recPrio(self.waiting[i-1]) == "Prioritized") do
         db("summon.waitlist", self:recPlayer(self.waiting[i-1]), "on shitlist, finding a better spot")
         i = i - 1
       end
       self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
+    -- finally, this player may have come from an addon peer, so we need to check player status
+    db("summon.waiting", player, "dead:", addonData.raid:isDead(player), "offline:", addonData.raid:isOffline(player))
+    if addonData.raid:isDead(player) then
+      local wait = self:findWaitingPlayer(player)
+      self:recStatus(wait, "dead")
+    end
+
+    if addonData.raid:isOffline(player) then
+      local wait = self:findWaitingPlayer(player)
+      self:recStatus(wait, "offline")
+    end
+
     db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
-  end,
+    end,
 
   ---------------------------------
   tick = function(self)
-    --- update our location
-    self:setCurrentLocation()
-
     --- update timers
     -- yea this is dumb, but time doesnt really work in wow
     -- so we count (rough) second ticks for how long someone has been waiting
@@ -233,6 +269,12 @@ local summon = {
 
     --- update display
     self:showSummons()
+
+    --- update our location
+    self:setCurrentLocation()
+
+    --- timestamp the list (maybe move to logout event)
+    SteaSummonSave.timeStamp = GetTime()
   end,
 
   ---------------------------------
@@ -245,7 +287,6 @@ local summon = {
     end
 
     if not SummonFrame then
-      g_self = self
       local f = CreateFrame("Frame", "SummonFrame", UIParent, "AnimatedShineTemplate")--, "DialogBoxFrame")
       f:SetPoint("CENTER")
       f:SetSize(300, 250)
@@ -426,7 +467,7 @@ local summon = {
 
       f.status = f:CreateFontString(nil,"ARTWORK")
       f.status:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.status:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", -30, -20)
+      f.status:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 42, 10)
       f.status:SetAlpha(.5)
       f.status:SetText("")
 
@@ -446,10 +487,10 @@ local summon = {
         self:enableButton(i)
         player = self:recPlayer(self.waiting[i])
         addonData.buttons[i].Button:SetText(player)
-        addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[1]), 1, 1))
+        addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[i]), 1, 1))
 
-        if self:recStatus(self.waiting[i]) == "offline" then
-          addonData.buttons[i].Status["FS"]:SetTextColor(0.2,0.2,0.2, 1)
+        if self:recStatus(self.waiting[i]) == "offline" or self:recStatus(self.waiting[i]) == "dead" then
+          addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
         else
           _, class = UnitClass(player)
           r,g,b,_ = GetClassColor(class)
@@ -492,7 +533,7 @@ local summon = {
           if self.hasSummoned or player == self.me then
             addonData.gossip:arrived(player)
           end
-          db("summon.display","cancelling ", player)
+          db("summon.display","cancelling", player)
           self:recRemove(player)
         end
       end
@@ -551,23 +592,6 @@ local summon = {
     if self.numwaiting == 0 then
       self.hasSummoned = false
     end
-  end,
-
-  ---------------------------------
-  shardCount = function(self)
-    local count = 0
-    if ShardIcon then
-      local _, itemLink = GetItemInfo("Soul Shard")
-      for bag = 0, NUM_BAG_SLOTS do
-        for slot = 1, GetContainerNumSlots(bag) do
-          if(GetContainerItemLink(bag, slot) == itemLink) then
-            count = count + 1
-          end
-        end
-      end
-      ShardIcon.count:SetText(tostring(count))
-    end
-    return count
   end,
 
   ---------------------------------
@@ -679,6 +703,17 @@ local summon = {
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 5, edgeSize = 15, insets = { left = 1, right = 1, top = 1, bottom = 1 }
       });
+      addonData.buttons[i].Priority:SetScript("OnEnter", function(self, motion)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Reason for placement")
+        GameTooltip:AddLine("[W]arlock, [B]uffs, [P]riority, [N]ormal, [L]ast")
+        GameTooltip:Show()
+      end)
+      addonData.buttons[i].Priority:SetScript("OnLeave", function(self, motion)
+        GameTooltip:Hide()
+      end)
+      addonData.buttons[i].Priority:EnableMouse(true)
+
       addonData.buttons[i].Priority["FS"] = addonData.buttons[i].Priority:CreateFontString("StatusText"..i,"ARTWORK", "ChatFontNormal")
       addonData.buttons[i].Priority["FS"]:SetParent(addonData.buttons[i].Priority)
       addonData.buttons[i].Priority["FS"]:SetPoint("TOP",addonData.buttons[i].Priority,"TOP",0,0)
@@ -710,6 +745,40 @@ local summon = {
       addonData.buttons[i].Status["FS"]:SetFontObject("GameFontNormalSmall")
       addonData.buttons[i].Status["FS"]:SetTextColor(1,1,1)
       addonData.buttons[i].Status["FS"]:SetText("Waiting")
+    end
+  end,
+
+  ---------------------------------
+  shardCount = function(self)
+    local count = 0
+    if ShardIcon then
+      local _, itemLink = GetItemInfo("Soul Shard")
+      for bag = 0, NUM_BAG_SLOTS do
+        for slot = 1, GetContainerNumSlots(bag) do
+          if(GetContainerItemLink(bag, slot) == itemLink) then
+            count = count + 1
+          end
+        end
+      end
+      ShardIcon.count:SetText(tostring(count))
+    end
+    return count
+  end,
+
+  ---------------------------------
+  shardIncrementBy = function(self, incr)
+    self.shards = self.shards + incr
+    db("summon.display", "Shard count update", incr, self.shards)
+    if ShardIcon then
+      ShardIcon.count:SetText(tostring(self.shards))
+    end
+  end,
+
+  ---------------------------------
+  bagPushShardCheck = function(_, event, bag, iconFileID)
+    db("summon.display", event, bag, iconFileID)
+    if iconFileID == 134075 then
+      g_self:shardIncrementBy(1)
     end
   end,
 
@@ -811,7 +880,7 @@ local summon = {
     end
   end,
 
-  offline = function(self, offline, player)
+  offline = function(self, player, offline)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
@@ -820,8 +889,8 @@ local summon = {
         state = "offline"
       else
         if self:recStatus(self.waiting[idx]) == "offline" then
-          db("summon.waitlist", "setting status of " .. player .. " from offline to waiting")
-          state = "waiting"
+          db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
+          state = "requested"
         end
       end
       if state ~= "" then
@@ -834,7 +903,7 @@ local summon = {
     return self:recRemove(player)
   end,
 
-  dead = function(self, dead, player)
+  dead = function(self, player, dead)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
@@ -843,8 +912,8 @@ local summon = {
         db("summon.waitlist", "setting status of", player, "to dead")
       else
         if self.waiting[idx][3] == "dead" then
-          db("summon.waitlist", "setting status of", player, "from dead to waiting")
-          state = "waiting"
+          db("summon.waitlist", "setting status of", player, "from dead to requested")
+          state = "requested"
         end
       end
       if state ~= "" then
@@ -903,6 +972,31 @@ local summon = {
     end
   end,
 
+  usesSoulShard = {
+    ["Shadowburn"] = 1,
+    ["Create Soulstone"] = 1,
+    ["Create Soulstone (Lesser)"] = 1,
+    ["Create Soulstone (Minor)"] = 1,
+    ["Create Soulstone (Greater)"] = 1,
+    ["Create Soulstone (Major)"] = 1,
+    ["Create Spellstone"] = 1,
+    ["Create Spellstone (Greater)"] = 1,
+    ["Create Spellstone (Major)"] = 1,
+    ["Summon Felhunter"] = 1,
+    ["Summon Succubus"] = 1,
+    ["Summon Voidwalker"] = 1,
+    ["Soul Fire"] = 1,
+    ["Create Firestone (Lesser)"] = 1,
+    ["Create Firestone (Greater)"] = 1,
+    ["Create Firestone (Major)"] = 1,
+    ["Create Firestone"] = 1,
+    ["Create Healthstone"] = 1,
+    ["Create Healthstone (Lesser)"] = 1,
+    ["Create Healthstone (Minor)"] = 1,
+    ["Create Healthstone (Greater)"] = 1,
+    ["Create Healthstone (Major)"] = 1,
+  },
+
   ---------------------------------
   castWatch = function(self, event, target, castUID, spellId, ...)
     db("summon.spellcast", event, " ", target, castUID, spellId, ...)
@@ -942,9 +1036,11 @@ local summon = {
     elseif event == "UNIT_SPELLCAST_DELAYED" then
       -- presumably if you get hit while casting
     elseif event == "UNIT_SPELLCAST_STOP" then
-      -- this is a normal end of cast
-      if g_self.isWarlock then
-        g_self.shards = addonData.summon.shardCount(g_self)
+      -- this is a normal end of cast, might go into channel next
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+      -- this is the place to find out if a non-channelled spell used a soul shard
+      if g_self.isWarlock and g_self.usesSoulShard[name] then
+        g_self:shardIncrementBy(-1)
       end
     elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       if g_self.isWarlock then
@@ -954,6 +1050,8 @@ local summon = {
           --- update shards (if shard count decreased then the summon went through!)
           if oldCount > g_self.shards then
             addonData.summon.summonSuccess(g_self)
+          else
+            addonData.summon.summonFail(g_self)
           end
         end
       end
