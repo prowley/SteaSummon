@@ -291,9 +291,10 @@ local summon = {
       f:SetPoint("CENTER")
       f:SetSize(300, 250)
       f:SetScale(SteaSummonSave.windowSize)
+
       local wpos = addonData.settings:getWindowPos()
-      if wpos and #wpos then
-        cprint("summon.display",  wpos[1], wpos[2], wpos[3], wpos[4], wpos[5], "width:", wpos["width"], "height:", wpos["height"])
+      if wpos and #wpos > 0 then
+        db("summon.display",  wpos[1], wpos[2], wpos[3], wpos[4], wpos[5], "width:", wpos["width"], "height:", wpos["height"])
         f:ClearAllPoints()
         f:SetPoint(wpos[1], wpos[2], wpos[3], wpos[4], wpos[5])
         --f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", wpos["left"], wpos["top"])

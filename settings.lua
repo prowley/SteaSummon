@@ -58,8 +58,8 @@ settings = {
       SteaSummonSave.buffs = true
     end
 
-    if SteaSummonSave.windowPos == nil then
-      SteaSummonSave.windowPos = {}
+    if SteaSummonSave.windowPos == nil or (type(SteaSummonSave.windowPos[2]) == "table" or not SteaSummonSave.windowPos["height"]) then
+      SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
     end
   end,
 
@@ -81,7 +81,7 @@ settings = {
     SteaSummonSave.timeStamp = 0
     SteaSummonSave.waitingKeepTime = 5
     SteaSummonSave.buffs = true
-    SteaSummonSave.windowPos = {}
+    SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
   end,
 
   findSummonWord = function(self, phrase)
@@ -143,11 +143,11 @@ settings = {
   end,
 
   getWindowPos = function(self)
-    return SteaSummonSave.winowPos
+    return SteaSummonSave.windowPos
   end,
 
   setWindowPos = function(self, pos)
-    SteaSummonSave.winowPos = pos
+    SteaSummonSave.windowPos = pos
   end,
 }
 
