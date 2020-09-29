@@ -24,11 +24,15 @@ function start()
   call["UNIT_SPELLCAST_STOP"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_FAILED"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_INTERRUPTED"] = addonData.summon.castWatch
-  call["UNIT_SPELLCAST_FAILED_QUIET"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_DELAYED"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_CHANNEL_START"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_CHANNEL_UPDATE"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_CHANNEL_STOP"] = addonData.summon.castWatch
+  call["UNIT_SPELLCAST_SUCCEEDED"] = addonData.summon.castWatch
+  call["ITEM_PUSH"] = addonData.summon.bagPushShardCheck
+
+  -- under observation
+  call["UNIT_SPELLCAST_FAILED_QUIET"] = addonData.monitor.callback
 
    -- set up the load event
   frame = CreateFrame("Frame")
@@ -53,8 +57,6 @@ function playerEnter(event, ...)
       frame:RegisterEvent(k)
     end
   end
-
-  addonData.summon:showSummons()
 end
 
 function loaded(self, event, ...)
@@ -87,8 +89,10 @@ function loaded(self, event, ...)
     -- otherwise the category or its children may not be registered for chat debug messages
     addonData.debug:chatCat("raid")
     addonData.debug:chatCat("buffs")
+    addonData.debug:chatCat("monitor")
     addonData.debug:chatCat("summon.waitlist")
     addonData.debug:chatCat("summon.display")
+    addonData.debug:chatCat("summon.spellcast")
     addonData.debug:chatCat("event.event")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 

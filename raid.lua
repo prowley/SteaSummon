@@ -13,6 +13,7 @@ local addonName, addonData = ...
 local old, new = {}, {}
 local roster = {}
 local rosterOld = {}
+
 local dead = {}
 
 
@@ -56,7 +57,7 @@ local raid = {
         db("Got a nil back for name", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
         break -- protect the list
       end
-      new[name] = online
+      new[name] = online or nil
       roster[name] = 1
 
       if rosterOld[name] == nil then
@@ -66,7 +67,7 @@ local raid = {
       if (old[name] or rosterOld[name] == nil) and not online then
         db("raid", name, "is offline.")
         addonData.summon:offline(name, true)
-      elseif not (old[name] or rosterOld[name] == nil) and online then
+      elseif old[name] == nil and rosterOld[name] and online then
         db("raid", name, "logged back on.")
         addonData.summon:offline(name, false)
       end
@@ -75,7 +76,7 @@ local raid = {
         db("raid", name, "is dead.")
         addonData.summon:dead(name, true)
         dead[name] = 1
-      elseif not isDead and not dead[name] then
+      elseif not isDead and dead[name] then
         addonData.summon:dead(name, false)
         dead[name] = nil
       end
@@ -104,9 +105,17 @@ local raid = {
       if not roster[k] then
         db("raid", k, " left the raid.")
         addonData.summon:remove(k)
-        self.inzone[name] = nil
+        self.inzone[k] = nil
       end
     end
+  end,
+
+  isDead = function(self, player)
+    return dead[player] == true
+  end,
+
+  isOffline = function(self, player)
+    return new[player] == nil
   end,
 
   fishArea = function(self)
@@ -118,14 +127,9 @@ local raid = {
 
     local lock = 0
     local click = 0
-    if addonData.util:playerCanSummon() then
-      lock = 1
-    else
-      click = 1
-    end
 
     for k, v in pairs(self.inzone) do
-      if UnitInRaid(k) then
+      if UnitInRange(k) then
         if addonData.util:playerCanSummon(k) then
           lock = lock + 1
         else

@@ -35,15 +35,6 @@ local debug = {
       self:reset()
     end
 
-    -- wow does auto placement of moveable frames, cool
-    -- what is not cool is that this placement/sizing happens at some undetermined time after creation
-    -- and specifically leaves all the sizing for children at the point of creation
-    -- when the window was a different size. I don't know of any event that can be listened to for this.
-    -- So.. we have to build the main frame here without content,
-    -- later when we come to want to see it, build all the children, from that point on
-    -- we can keep things properly sized - see the buildContent() for the rest
-    --- if anyone knows a better or simpler fix for this, please let me know
-
     local f = CreateFrame("Frame", "DBFrame", UIParent, "AnimatedShineTemplate")
     f:SetPoint("CENTER")
     f:SetSize(300, 250)
@@ -291,7 +282,7 @@ local debug = {
 function db(target, ...)
   if SteaDEBUG and SteaDEBUG.on then
     if SteaDEBUG.log and target and (debug.category[target] or type(target) == "number") then
-      prePrint = nil
+      local prePrint = nil
 
       if  type(target) == "number" then
         -- chat
@@ -329,7 +320,7 @@ function db(target, ...)
       end
     else
       -- just like a regular debug out
-      print("|cfff00000" .. addonName .. ": DEBUG:|r ", target, ...)
+      print("|cfff00000" .. addonName .. ": DEBUG:|r", target, ...)
     end
   end
 end

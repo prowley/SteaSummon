@@ -27,6 +27,7 @@
 -- gold ring: ../COMMON/GoldRing
 -- indicators (round): ../COMMON/inicator-(Red,Yellow,Gray,Green)
 -- button fram UI-Quickslot /-Depress
+-- sound: RAID_WARNING = 8959,
 
 local addonName, addonData = ...
 
