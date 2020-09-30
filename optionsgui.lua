@@ -373,9 +373,6 @@ optionsgui = {
   },
 
   init = function(self)
-    tmpchanges = {
-      show = SteaSummonSave.show
-    }
     LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummon", self.options)
     LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummon")
   end,
