@@ -134,6 +134,10 @@ local summon = {
   ---------------------------------
   addWaiting = function(self, player, fromPlayer)
     player = strsplit("-", player)
+    if not IsInGroup(player) then
+      return
+    end
+
     if (fromPlayer) then
       local isWaiting = self:findWaitingPlayer(player)
       if isWaiting then
@@ -454,15 +458,23 @@ local summon = {
       end
 
       --- Text items
+
       f.location = f:CreateFontString(nil,"ARTWORK")
       f.location:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.location:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, -16)
+      f.location:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, -8)
+      f.location:SetPoint("RIGHT", -20, 0)
+      f.location:SetJustifyH("RIGHT")
+      f.location:SetJustifyV("TOP")
       f.location:SetAlpha(.5)
       f.location:SetText("")
 
       f.destination = f:CreateFontString(nil,"ARTWORK")
       f.destination:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.destination:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 70, -8)
+      f.destination:SetPoint("TOP", f.location, "BOTTOM", 0, 0)
+      f.destination:SetPoint("LEFT", f.location)
+      f.destination:SetPoint("RIGHT", -20, 0)
+      f.destination:SetJustifyH("RIGHT")
+      f.destination:SetJustifyV("TOP")
       f.destination:SetAlpha(.5)
       f.destination:SetText("")
 
@@ -499,7 +511,8 @@ local summon = {
         end
 
         if (addonData.util:playerCanSummon()) then
-          addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast Ritual of Summoning")
+          local spell = GetSpellInfo(698) -- Ritual of Summoning
+          addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
         end
       else
         self:enableButton(i, false)
@@ -545,7 +558,8 @@ local summon = {
         --- Next Button
         if not next and self:recStatus(self.waiting[i]) == "requested" and addonData.util:playerCanSummon() then
           next = true
-          addonData.buttons[36].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast Ritual of Summoning")
+          local spell = GetSpellInfo(698) -- Ritual of Summoning
+          addonData.buttons[36].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
           addonData.buttons[36].Button:SetScript("OnMouseUp", summonClick)
           addonData.buttons[36].Button:Show()
         end
@@ -638,10 +652,10 @@ local summon = {
       tex:SetTexture("Interface/Buttons/UI-QuickSlot")
       texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
       texHighlight:SetTexCoord(0, 1, 0, 1)
-      texPushed:SetTexture("Interface/Buttons/UI-QuickSlot2")
-      texPushed:SetTexCoord(0, 1, 0, 1)
-      texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
-      texDisabled:SetTexCoord(0, 1, 0, 1)
+      --texPushed:SetTexture("Interface/Buttons/UI-QuickSlot2")
+      --texPushed:SetTexCoord(0, 1, 0, 1)
+      --texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
+      --texDisabled:SetTexCoord(0, 1, 0, 1)
       -- icon
       icon = addonData.buttons[i].Button:CreateTexture()
       icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
@@ -753,7 +767,7 @@ local summon = {
   shardCount = function(self)
     local count = 0
     if ShardIcon then
-      local _, itemLink = GetItemInfo("Soul Shard")
+      local _, itemLink = GetItemInfo(6265) -- "Soul Shard"
       for bag = 0, NUM_BAG_SLOTS do
         for slot = 1, GetContainerNumSlots(bag) do
           if(GetContainerItemLink(bag, slot) == itemLink) then
@@ -778,7 +792,7 @@ local summon = {
   ---------------------------------
   bagPushShardCheck = function(_, event, bag, iconFileID)
     db("summon.display", event, bag, iconFileID)
-    if iconFileID == 134075 then
+    if iconFileID == 134075 then -- "Soul Shard"
       g_self:shardIncrementBy(1)
     end
   end,
@@ -951,7 +965,7 @@ local summon = {
       end
     else
       SummonFrame.destination:SetTextColor(1,1,1,.5)
-      SummonFrame.location:SetTextColor(1,0,0,.5)
+      SummonFrame.location:SetTextColor(0,1,0,.5)
       if SummonToButton then
         SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
       end
@@ -967,35 +981,50 @@ local summon = {
 
     db("summon.misc", "setting destination: ", location, " in ", zone)
     if location and location ~= "" and zone and zone ~= "" then
-      SummonFrame.destination:SetText("Destination: " .. self.location .. ", " .. self.zone)
+      SummonFrame.destination:SetText("Destination: " .. self.zone .. ", " .. self.location)
     else
       SummonFrame.destination:SetText("")
     end
   end,
 
   usesSoulShard = {
-    ["Shadowburn"] = 1,
-    ["Create Soulstone"] = 1,
-    ["Create Soulstone (Lesser)"] = 1,
-    ["Create Soulstone (Minor)"] = 1,
-    ["Create Soulstone (Greater)"] = 1,
-    ["Create Soulstone (Major)"] = 1,
-    ["Create Spellstone"] = 1,
-    ["Create Spellstone (Greater)"] = 1,
-    ["Create Spellstone (Major)"] = 1,
-    ["Summon Felhunter"] = 1,
-    ["Summon Succubus"] = 1,
-    ["Summon Voidwalker"] = 1,
-    ["Soul Fire"] = 1,
-    ["Create Firestone (Lesser)"] = 1,
-    ["Create Firestone (Greater)"] = 1,
-    ["Create Firestone (Major)"] = 1,
-    ["Create Firestone"] = 1,
-    ["Create Healthstone"] = 1,
-    ["Create Healthstone (Lesser)"] = 1,
-    ["Create Healthstone (Minor)"] = 1,
-    ["Create Healthstone (Greater)"] = 1,
-    ["Create Healthstone (Major)"] = 1,
+    [27565] = 1, -- Banish
+    [8994] = 1, -- banish (again)
+    [12890] = 1, -- deep slumber, probably not in game
+    [1098] = 1, -- enslave demon rank 1
+    [11725] = 1, -- enslave demon rank 2
+    [11726] = 1, -- enslave demon rank 3
+    [17877] = 1, -- ["Shadowburn"] = 1, -- Rank 1
+    [18867] = 1, -- shadowburn rank 2
+    [18868] = 1, -- shadowburn rank 3
+    [18869] = 1, -- shadowburn rank 4
+    [18870] = 1, -- shadowburn rank 5
+    [18871] = 1, -- shadowburn rank 6
+    [20755] = 1, -- ["Create Soulstone"] = 1,
+    [20752] = 1, -- ["Create Soulstone (Lesser)"] = 1,
+    [693] = 1, -- ["Create Soulstone (Minor)"] = 1,
+    [20756] = 1, -- ["Create Soulstone (Greater)"] = 1,
+    [20757] = 1, -- ["Create Soulstone (Major)"] = 1,
+    [2362] = 1, -- ["Create Spellstone"] = 1,
+    [17727] = 1, -- ["Create Spellstone (Greater)"] = 1,
+    [17728] = 1, -- ["Create Spellstone (Major)"] = 1,
+    [691] = 1, -- ["Summon Felhunter"] = 1,
+    [712] = 1, -- ["Summon Succubus"] = 1, 8722 used by npcs
+    [8722] = 1, -- just in case
+    [697] = 1, -- ["Summon Voidwalker"] = 1, 12746 used by npcs
+    [12746] = 1, -- just in case
+    [6353] = 1, -- ["Soul Fire"] = 1, rank 1
+    [17924] = 1, -- soul fire rank 2
+    [6366] = 1, -- ["Create Firestone (Lesser)"] = 1,
+    [17952] = 1, -- ["Create Firestone (Greater)"] = 1,
+    [17953] = 1, -- ["Create Firestone (Major)"] = 1,
+    [17951] = 1, -- ["Create Firestone"] = 1,
+    [5699] = 1, --["Create Healthstone"] = 1, level 34
+    [6202] = 1, -- ["Create Healthstone (Lesser)"] = 1,
+    [6201] = 1, -- ["Create Healthstone (Minor)"] = 1,
+    [11729] = 1, -- ["Create Healthstone (Greater)"] = 1,
+    [208023] = 1, -- ["Create Healthstone"] = 1, level 10
+    [11730] = 1, -- ["Create Healthstone (Major)"] = 1,
   },
 
   ---------------------------------
@@ -1040,14 +1069,14 @@ local summon = {
       -- this is a normal end of cast, might go into channel next
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
       -- this is the place to find out if a non-channelled spell used a soul shard
-      if g_self.isWarlock and g_self.usesSoulShard[name] then
+      if g_self.isWarlock and g_self.usesSoulShard[spellId] then
         g_self:shardIncrementBy(-1)
       end
     elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
       if g_self.isWarlock then
         local oldCount = g_self.shards
         g_self.shards = addonData.summon.shardCount(g_self)
-        if name == "Ritual of Summoning" then
+        if spellId == 698 then -- "Ritual of Summoning"
           --- update shards (if shard count decreased then the summon went through!)
           if oldCount > g_self.shards then
             addonData.summon.summonSuccess(g_self)

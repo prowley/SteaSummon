@@ -1,51 +1,30 @@
 local addonName, addonData = ...
 
 City = {
-  "WarChief's Blessing",
-  "Rallying Cry of the Dragonslayer",
-  "Spirit of Zandalar",
+  16609, --"WarChief's Blessing",
+  22888, --"Rallying Cry of the Dragonslayer",
+  24425, --"Spirit of Zandalar",
 }
 
 DarkMoon = {
-  "Sayge's Dark Fortune of Damage",
-  "Sayge's Dark Fortune of Resistance",
-  "Sayge's Dark Fortune of Armor",
-  "Sayge's Dark Fortune of Intelligence",
-  "Sayge's Dark Fortune of Spirit",
-  "Sayge's Dark Fortune of Stamina",
-  "Sayge's Dark Fortune of Strength",
-  "Sayge's Dark Fortune of Agility",
+  23768, --"Sayge's Dark Fortune of Damage",
+  23769, --"Sayge's Dark Fortune of Resistance",
+  23767, --"Sayge's Dark Fortune of Armor",
+  23766, --"Sayge's Dark Fortune of Intelligence",
+  23738, --"Sayge's Dark Fortune of Spirit",
+  23737, --"Sayge's Dark Fortune of Stamina",
+  23735, --"Sayge's Dark Fortune of Strength",
+  23737, --"Sayge's Dark Fortune of Agility",
 }
 
 DireMaul = {
-  "Mol'dar's Moxie",
-  "Fengus' Ferocity",
-  "Slip'kik's Savvy",
+  22818, --"Mol'dar's Moxie",
+  22817, --"Fengus' Ferocity",
+  22820, --"Slip'kik's Savvy",
 }
 
 Felwood = {
-  "Songflower Serenade",
-  "Windblossom Berries",
-  "Whipper Root Tuber",
-  "Night Dragon's Breath",
-}
-
-BlastedLands = {
-  "R.O.I.D.S.",
-  "Ground Scorpak Assay",
-  "Lung Juice Cocktail",
-  "Cerebral Cortex Compound",
-  "Gizzard Gum",
-}
-
-Winterspring = {
-  "Juju Might",
-  "Juju Power",
-  "Juju Flurry",
-  "Juju Gulie",
-  "Juju Escape",
-  "Juju Chill",
-  "Juju Ember"
+  15366, --"Songflower Serenade",
 }
 
 TimeSensitive = {
@@ -85,9 +64,9 @@ buffs = {
       end
 
       db("buffs", player, "has buff", name)
-      if self.buffs[name] then
+      if self.buffs[spellId] then
         db("buffs", name, "is of interest")
-        out[i] = {name, icon}
+        out[i] = {spellId, name, icon}
         i = i + 1
       end
     end
