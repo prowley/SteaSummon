@@ -45,15 +45,17 @@ local gossip = {
   atDest = {},
   atDestCount = 0,
   atDestTimer = nil,
+  me = nil,
 
   ---------------------------------
   init = function(self)
     addonData.debug:registerCategory("gossip.event")
     -- register addon comms channel
-    local commsgood = self:RegisterComm(self.channel, self.callback)
-    db("gossip.event","addon channel registered: ", commsgood)
+    local commsgood = self:RegisterComm(self.channel, "callback")
+    db("addon channel registered: ", commsgood)
     self.netlistTimer = addonData.monitor:create(5, self.netListTimeout, false)
     self.atDestTimer = addonData.monitor:create(2, self.atDestAction, false)
+    self.me, _ = UnitName("player")
   end,
 
   ---------------------------------
@@ -110,8 +112,7 @@ local gossip = {
       db("gossip", ">> netreq >> Broadcast")
       self:SendCommMessage(self.channel, "netreq", "RAID")
       -- 3. if not received, you are the first one on the list and network leader
-      local name, _ = UnitName("player")
-      table.insert(self.tmpList, 1, name)
+      table.insert(self.tmpList, 1, self.me)
       self.netlistTimer:Play()
     end
   end,
@@ -170,9 +171,7 @@ local gossip = {
       return true
     end
 
-    local name, _ = UnitName("player")
-
-    return self.netList[1] == name
+    return self.netList[1] == self.me
   end,
 
   ---------------------------------
@@ -266,7 +265,7 @@ local gossip = {
     if self:isLeader() then
       local settingSelf = false
       if not name then
-        name, _ = UnitName("player")
+        name = self.me
         settingSelf = true
       end
       if (self.atDest[name] == nil and at) or (self.atDest[name] and not at) then
@@ -330,13 +329,20 @@ local gossip = {
     if not addonData.settings:useUpdates() then
       return
     else
-      addonData.gossip:receive(msg, dist, sender, ... )
+      if sender ~= self.me then
+        addonData.gossip:receive(msg, dist, sender, ... )
+      end
     end
   end,
 
   ---------------------------------
   receive = function(self, msg, _, sender, ... )
     local cmd, subcmd strsplit(" ", msg)
+
+    if cmd == nil then
+      cmd = msg -- blizzard, really? Every strsplit function ever passes back the whole string if no delimiter is found...
+    end
+
     db ("gossip.event", "command", cmd, "from", sender)
 
     if cmd == "s" then
@@ -482,7 +488,7 @@ local gossip = {
       -- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
       if self.inInit then
         self.netlistTimer:Stop()
-        self.netlistTimer:Start()
+        self.netlistTimer:Play()
       end
     end
   end
