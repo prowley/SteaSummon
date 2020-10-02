@@ -96,7 +96,7 @@ local gossip = {
       return
     end
 
-    local msg = "netList " .. addonData.util:tableToMultiLine(self.netList)
+    local msg = "netlist " .. addonData.util:tableToMultiLine(self.netList)
     db("gossip", ">> netlist send >> whisper", player)
     self:SendCommMessage(self.channel, msg, "WHISPER", player)
   end,
@@ -338,11 +338,7 @@ local gossip = {
 
   ---------------------------------
   receive = function(self, msg, _, sender, ... )
-    local cmd, subcmd strsplit(" ", msg)
-
-    if cmd == nil then
-      cmd = msg -- blizzard, really? Every strsplit function ever passes back the whole string if no delimiter is found...
-    end
+    local cmd, subcmd = strsplit(" ", msg)
 
     db ("gossip.event", "command", cmd, "from", sender)
 
