@@ -1,14 +1,14 @@
 -- set things going
 
--- TODO: silent summon request
 -- TODO: add click nag button
 -- TODO: add raid instructions
 -- TODO: add more clickers nag
 -- TODO: add type down search of list
 -- TODO: add fancy spell casting next button
--- TODO: send some messages over whisper channel, not broadcast
 -- TODO: add sound when next button pops
 -- TODO: L10N **** Prio
+-- TODO: remove option to turn off comms
+-- TODO: figure out how to deal with locks summoning without addon
 
 -- notes:
 --
@@ -21,7 +21,7 @@
 -- button fram UI-Quickslot /-Depress
 -- sound: RAID_WARNING = 8959,
 
-local addonName, addonData = ...
+local addonName, _ = ...
 
 -- colored print to chat window
 function cprint(...)

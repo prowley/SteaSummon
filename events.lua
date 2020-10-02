@@ -16,7 +16,7 @@ function start()
   call["CHAT_MSG_ADDON"] = addonData.gossip.callback
   call["CHAT_MSG_SAY"] = addonData.chat.callback
   call["CHAT_MSG_WHISPER"] = addonData.chat.callback
-  call["PARTY_LEADER_CHANGED"] = addonData.gossip.callback
+  call["PARTY_LEADER_CHANGED"] = addonData.raid.callback
   call["GROUP_ROSTER_UPDATE"] = addonData.raid.callback
   call["RAID_ROSTER_UPDATE"] = addonData.raid.callback
   call["PLAYER_REGEN_DISABLED"] = addonData.summon.callback
@@ -47,11 +47,11 @@ function callback(self, event, ...)
   end
 end
 
-function playerEnter(event, ...)
+function playerEnter()
   db("event.event","player entering world")
 
   -- register events
-  for k,v in pairs(call) do
+  for k,_ in pairs(call) do
     if k ~= "ADDON_LOADED" then
       db("event.event","registering event", k)
       frame:RegisterEvent(k)
@@ -59,7 +59,7 @@ function playerEnter(event, ...)
   end
 end
 
-function loaded(self, event, ...)
+function loaded(_, event, ...)
   local name = ...
 
   -- if it this addon
@@ -74,14 +74,14 @@ function loaded(self, event, ...)
     db("event.event", "------------- NEW SESSION -------------")
     db("event.event", "loaded", event, ...)
 
-    -- init modules
+    -- init modules, some of these just set up debug categories
     addonData.settings:init()
     addonData.optionsgui:init()
     addonData.raid:init()
+    addonData.monitor:init()
     addonData.gossip:init()
     addonData.summon:init()
     addonData.chat:init()
-    addonData.monitor:init()
     addonData.util:init()
     addonData.buffs:init()
 
@@ -89,17 +89,11 @@ function loaded(self, event, ...)
     -- otherwise the category or its children may not be registered for chat debug messages
     addonData.debug:chatCat("raid")
     addonData.debug:chatCat("buffs")
-    addonData.debug:chatCat("monitor")
     addonData.debug:chatCat("summon.waitlist")
-    addonData.debug:chatCat("summon.display")
-    addonData.debug:chatCat("summon.spellcast")
     addonData.debug:chatCat("event.event")
+    addonData.debug:chatCat("gossip")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
-    -- register addon comms channel
-    addonData.channel = "SteaSummon"
-    local commsgood = C_ChatInfo.RegisterAddonMessagePrefix(addonData.channel)
-    db("event.event","addon channel registered: ", commsgood)
     cprint("loaded")
   end
 end

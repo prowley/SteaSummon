@@ -1,6 +1,5 @@
-local addonName, addonData = ...
+local _, addonData = ...
 
-local cw_spells = {} -- current summon spells being cast, module level because accessed in a callback
 local g_self -- for callbacks
 
 local summon = {
@@ -54,7 +53,21 @@ local summon = {
   end,
 
   ---------------------------------
-  recPlayer = function(self, rec, val)
+  recMarshal = function(self, rec)
+    return self:recPlayer(rec)
+        .. "+" .. self:recTime(rec)
+        .. "+" .. self:recStatus(rec)
+        .. "+" .. self:recPrio(rec)
+  end,
+
+  ---------------------------------
+  recUnMarshal = function(self, data)
+    local player, time, status, prio = strsplit("+", data)
+    return self:waitRecord(player, time, status, prio)
+  end,
+
+  ---------------------------------
+  recPlayer = function(_, rec, val)
     if val then
       db("summon.waitlist.record","setting record player value:", val)
       rec[1] = val
@@ -63,7 +76,7 @@ local summon = {
   end,
 
   ---------------------------------
-  recTime = function(self, rec, val)
+  recTime = function(_, rec, val)
     if val then
       db("summon.waitlist.record","setting record time value:", val)
       rec[2] = val
@@ -72,14 +85,14 @@ local summon = {
   end,
 
   ---------------------------------
-  recTimeIncr = function(self, rec)
+  recTimeIncr = function(_, rec)
     rec[2] = rec[2] + 1
     db("summon.tick","setting record time value:", rec[2]) -- too verbose for summon.waitlist.record
     return rec[2]
   end,
 
   ---------------------------------
-  recStatus = function(self, rec, val)
+  recStatus = function(_, rec, val)
     if val then
       db("summon.waitlist.record","setting record status value:", val)
       rec[3] = val
@@ -88,7 +101,7 @@ local summon = {
   end,
 
   ---------------------------------
-  recPrio = function(self, rec, val)
+  recPrio = function(_, rec, val)
     if val then
       db("summon.waitlist.record","setting record priority reason value:", val)
       rec[4] = val
@@ -135,7 +148,7 @@ local summon = {
   addWaiting = function(self, player, fromPlayer)
     player = strsplit("-", player)
     if not IsInGroup(player) then
-      return
+      return nil
     end
 
     if (fromPlayer) then
@@ -147,13 +160,14 @@ local summon = {
       end
     else
       if self:findWaitingPlayer(player) then
-        return
+        return nil
       end
     end
     db("summon.waitlist", "Making some space for ", player)
 
     -- priorities
     local inserted = false
+    local index
 
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
@@ -161,6 +175,7 @@ local summon = {
         if self:recPrio(wait) ~= "Warlock" then
           db("summon.waitlist", "Warlock", player, "gets prio")
           self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"), k)
+          index = k
           inserted = true
           break
         end
@@ -168,6 +183,7 @@ local summon = {
       if not inserted then
         db("summon.waitlist", "Warlock", player, "gets prio")
         self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"))
+        index = self.numwaiting
         inserted = true
       end
     end
@@ -179,6 +195,7 @@ local summon = {
         if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed") then
           self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
+          index = k
           inserted = true
           break
         end
@@ -186,6 +203,7 @@ local summon = {
       if not inserted then
         self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"))
         db("summon.waitlist", "Buffed " .. player .. " gets prio")
+        index = self.numwaiting
         inserted = true
       end
     end
@@ -197,6 +215,7 @@ local summon = {
             or addonData.settings:findPrioPlayer(self:recPlayer(wait))) then
           self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"), k)
           db("summon.waitlist", "Priority " .. player .. " gets prio")
+          index = k
           inserted = true
           break
         end
@@ -204,6 +223,7 @@ local summon = {
       if not inserted then
         self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"))
         db("summon.waitlist", "Priority " .. player .. " gets prio")
+        index = self.numwaiting
         inserted = true
       end
     end
@@ -211,6 +231,7 @@ local summon = {
     -- Prio last
     if not inserted and addonData.settings:findShitlistPlayer(player) ~= nil then
       self:recAdd(self:waitRecord(player, 0, "requested", "Last"))
+      index = self.numwaiting
       inserted = true
     end
 
@@ -224,11 +245,12 @@ local summon = {
         db("summon.waitlist", self:recPlayer(self.waiting[i-1]), "on shitlist, finding a better spot")
         i = i - 1
       end
+      index = i
       self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
     -- finally, this player may have come from an addon peer, so we need to check player status
-    db("summon.waiting", player, "dead:", addonData.raid:isDead(player), "offline:", addonData.raid:isOffline(player))
+    db("summon.waitlist", player, "dead:", addonData.raid:isDead(player), "offline:", addonData.raid:isOffline(player))
     if addonData.raid:isDead(player) then
       local wait = self:findWaitingPlayer(player)
       self:recStatus(wait, "dead")
@@ -241,7 +263,8 @@ local summon = {
 
     db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
-    end,
+    return index
+  end,
 
   ---------------------------------
   tick = function(self)
@@ -265,11 +288,15 @@ local summon = {
 
     for _, player in pairs(players) do
       local z, l = self:getCurrentLocation()
-      if z == self.zone and l == self.location then
-        self:arrived(player)
+      if z == self.zone and l == self.location -- at destination, anyone can report
+          or (self.zone == "" and self.location == "") -- no destination, anyone can report
+          or player == self.summoningPlayer then -- summoner can report
         addonData.gossip:arrived(player) -- let everyone else know
       end
     end
+
+    --- maintain gossip list
+    addonData.gossip:offlineCheck()
 
     --- update display
     self:showSummons()
@@ -319,13 +346,13 @@ local summon = {
       --- Movable
       f:SetMovable(true)
       f:SetClampedToScreen(true)
-      f:SetScript("OnMouseDown", function(self, button)
+      f:SetScript("OnMouseDown", function(this, button)
         if button == "LeftButton" then
-          self:StartMoving()
+          this:StartMoving()
         end
       end)
 
-      local movefunc = function(self, _)
+      local movefunc = function()
         SummonFrame:StopMovingOrSizing()
         SummonFrame:SetUserPlaced(false)
 
@@ -372,7 +399,8 @@ local summon = {
       local sf = CreateFrame("ScrollFrame", "ScrollFrame", SummonFrame, "UIPanelScrollFrameTemplate")
       sf:SetPoint("LEFT", 8, 0)
       sf:SetPoint("RIGHT", -40, 0)
-      sf:SetPoint("TOP", 0, -32)
+      sf:SetPoint("TOP", 0, -84)
+      sf:SetPoint("BOTTOM", 0, 30)
       sf:SetScale(0.5)
 
       addonData.buttonFrame = CreateFrame("Frame", "ButtonFrame", SummonFrame)
@@ -404,24 +432,22 @@ local summon = {
       rb:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
       rb:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
 
-      rb:SetScript("OnMouseDown", function(self, button)
+      rb:SetScript("OnMouseDown", function(this, button)
         if button == "LeftButton" then
           f:StartSizing("BOTTOMRIGHT")
-          self:GetHighlightTexture():Hide() -- more noticeable
+          this:GetHighlightTexture():Hide() -- more noticeable
         end
       end)
       rb:SetScript("OnMouseUp", movefunc)
 
       if addonData.util:playerCanSummon() then
-        local summonTo = function(otherself, button, worked)
+        local summonTo = function(_, button, worked)
           if button == "LeftButton" and worked then
-            if self.infoSend then
+            if not self.infoSend then
               SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-              self:setDestination(self.myZone, self.myLocation)
               addonData.gossip:destination(self.myZone, self.myLocation)
             else
               SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-              self:setDestination("", "")
               addonData.gossip:destination("", "")
             end
             self.infoSend = not self.infoSend
@@ -492,9 +518,9 @@ local summon = {
     --- update buttons
     local next = false
     for i=1, 35 do
-      local player = nil
-      local summonClick = nil
-      local cancelClick = nil
+      local player
+      local summonClick
+      local cancelClick
 
       if self.waiting[i] ~= nil then
         self:enableButton(i)
@@ -503,52 +529,55 @@ local summon = {
         addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[i]), 1, 1))
 
         if self:recStatus(self.waiting[i]) == "offline" or self:recStatus(self.waiting[i]) == "dead" then
+          addonData.buttons[i].Button:SetEnabled(false)
           addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
+          addonData.buttons[i].Button:SetAttribute("macrotext", "")
+          addonData.buttons[i].Button:SetScript("OnMouseUp", nil)
         else
+          addonData.buttons[i].Button:SetEnabled(true)
           _, class = UnitClass(player)
           r,g,b,_ = GetClassColor(class)
           addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
-        end
+          if (addonData.util:playerCanSummon()) then
+            local spell = GetSpellInfo(698) -- Ritual of Summoning
+            addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+          end
+          local z,l = self:getCurrentLocation()
 
-        if (addonData.util:playerCanSummon()) then
-          local spell = GetSpellInfo(698) -- Ritual of Summoning
-          addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+          if (addonData.util:playerCanSummon()) then
+            summonClick = function(_, button, worked)
+              if button == "LeftButton" and worked then
+                if UnitPower("player") >= 300 then
+                  db("summon.display","summoning ", player)
+                  addonData.gossip:status(player, "pending")
+                  addonData.chat:raid(SteaSummonSave.raidchat, player)
+                  addonData.chat:say(SteaSummonSave.saychat, player)
+                  addonData.chat:whisper(SteaSummonSave.whisperchat, player)
+                  self.summoningPlayer = player
+                  addonData.gossip:destination(z, l)
+                  self.hasSummoned = true
+                else
+                  addonData.chat:whisper("Imagine not having enough mana.", self.me)
+                end
+              end
+            end
+            addonData.buttons[i].Button:SetScript("OnMouseUp", summonClick)
+          end
         end
       else
         self:enableButton(i, false)
-      end
-
-      local z,l = self:getCurrentLocation()
-
-      if (addonData.util:playerCanSummon()) then
-        summonClick = function(otherself, button, worked)
-          if button == "LeftButton" and worked then
-            db("summon.display","summoning ", player)
-            addonData.gossip:status(player, "pending")
-            addonData.chat:raid(SteaSummonSave.raidchat, player)
-            addonData.chat:say(SteaSummonSave.saychat, player)
-            addonData.chat:whisper(SteaSummonSave.whisperchat, player)
-            self.summoningPlayer = player
-            self:summoned(player)
-            self:setDestination(z, l)
-            addonData.gossip:destination(z, l)
-            self.hasSummoned = true
-          end
-        end
-        addonData.buttons[i].Button:SetScript("OnMouseUp", summonClick)
       end
 
       --- Cancel Button
       -- Can cancel from own UI
       -- Cancelling self sends msg to others
       -- If summoning warlock, can cancel and send msg to others
-      cancelClick = function(otherself, button, worked)
+      cancelClick = function(_, button, worked)
         if button == "LeftButton" and worked then
           if self.hasSummoned or player == self.me then
             addonData.gossip:arrived(player)
           end
           db("summon.display","cancelling", player)
-          self:recRemove(player)
         end
       end
 
@@ -577,7 +606,6 @@ local summon = {
         addonData.buttons[i].Status["FS"]:SetText(self:recStatus(self.waiting[i]))
       end
     end
-
 
     if not next then
       -- all summons left are pending, disable the next button
@@ -610,12 +638,12 @@ local summon = {
   end,
 
   ---------------------------------
-  createButton = function(self, i)
+  createButton = function(_, i)
     -- Summon Button
     local bw = 80
     local bh = 25
     local wpad = 30
-    local hpad = 20
+    local hpad = 5
 
     local parent = addonData.buttonFrame
     if i == 36 then
@@ -626,7 +654,7 @@ local summon = {
 
     addonData.buttons[i] = {}
     addonData.buttons[i].Button = CreateFrame("Button", "SummonButton"..i, parent, "SecureActionButtonTemplate");
-    addonData.buttons[i].Button:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", wpad,-((i*bh)+hpad))
+    addonData.buttons[i].Button:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", wpad,-(((i-1)*bh)+hpad))
     addonData.buttons[i].Button:SetText("Stea")
     addonData.buttons[i].Button:SetNormalFontObject("GameFontNormalSmall")
     tex = addonData.buttons[i].Button:CreateTexture()
@@ -648,19 +676,20 @@ local summon = {
       addonData.buttons[i].Button:ClearAllPoints()
       addonData.buttons[i].Button:SetWidth(bw - 30)
       addonData.buttons[i].Button:SetHeight(bw - 30)
-      tex:SetTexCoord(0, 1, 0, 1)
-      tex:SetTexture("Interface/Buttons/UI-QuickSlot")
-      texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
-      texHighlight:SetTexCoord(0, 1, 0, 1)
-      --texPushed:SetTexture("Interface/Buttons/UI-QuickSlot2")
-      --texPushed:SetTexCoord(0, 1, 0, 1)
-      --texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
-      --texDisabled:SetTexCoord(0, 1, 0, 1)
+      tex:SetTexture("Interface/Buttons/UI-QuickSlot2")
+      tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+      texPushed:SetTexture("Interface/Buttons/UI-QuickSlot")
+      texPushed:SetTexCoord(0, 1, 0, 1)
+      texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
+      texDisabled:SetTexCoord(0, 1, 0, 1)
       -- icon
       icon = addonData.buttons[i].Button:CreateTexture()
       icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
       icon:SetTexCoord(0, 1, 0, 1)
       icon:SetAllPoints()
+
+      texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
+      texHighlight:SetTexCoord(0, 1, 0, 1)
     end
 
     tex:SetAllPoints()
@@ -685,13 +714,13 @@ local summon = {
       addonData.buttons[i].Cancel:SetWidth(bh)
       addonData.buttons[i].Cancel:SetHeight(bh)
       addonData.buttons[i].Cancel:SetText("X")
-      addonData.buttons[i].Cancel:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", 10,-((i*bh)+hpad))
+      addonData.buttons[i].Cancel:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", 10,-(((i-1)*bh)+hpad))
 
       -- Wait Time
       addonData.buttons[i].Time = CreateFrame("Frame", "SummonWaitTime"..i, addonData.buttonFrame)
       addonData.buttons[i].Time:SetWidth(bw)
       addonData.buttons[i].Time:SetHeight(bh)
-      addonData.buttons[i].Time:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 108,-((i*bh)+hpad))
+      addonData.buttons[i].Time:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 108,-(((i-1)*bh)+hpad))
       addonData.buttons[i].Time:SetBackdrop( {
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -712,19 +741,19 @@ local summon = {
       addonData.buttons[i].Priority = CreateFrame("Frame", "SummonPriority"..i, addonData.buttonFrame)
       addonData.buttons[i].Priority:SetWidth(bh)
       addonData.buttons[i].Priority:SetHeight(bh)
-      addonData.buttons[i].Priority:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 1,-((i*bh)+hpad))
+      addonData.buttons[i].Priority:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 1,-(((i-1)*bh)+hpad))
       addonData.buttons[i].Priority:SetBackdrop( {
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 5, edgeSize = 15, insets = { left = 1, right = 1, top = 1, bottom = 1 }
       });
-      addonData.buttons[i].Priority:SetScript("OnEnter", function(self, motion)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      addonData.buttons[i].Priority:SetScript("OnEnter", function(this)
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
         GameTooltip:AddLine("Reason for placement")
         GameTooltip:AddLine("[W]arlock, [B]uffs, [P]riority, [N]ormal, [L]ast")
         GameTooltip:Show()
       end)
-      addonData.buttons[i].Priority:SetScript("OnLeave", function(self, motion)
+      addonData.buttons[i].Priority:SetScript("OnLeave", function()
         GameTooltip:Hide()
       end)
       addonData.buttons[i].Priority:EnableMouse(true)
@@ -744,7 +773,7 @@ local summon = {
       addonData.buttons[i].Status = CreateFrame("Frame", "SummonStatus"..i, addonData.buttonFrame)
       addonData.buttons[i].Status:SetWidth(bw)
       addonData.buttons[i].Status:SetHeight(bh)
-      addonData.buttons[i].Status:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 27,-((i*bh)+hpad))
+      addonData.buttons[i].Status:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 27,-(((i-1)*bh)+hpad))
       addonData.buttons[i].Status:SetBackdrop( {
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -764,7 +793,7 @@ local summon = {
   end,
 
   ---------------------------------
-  shardCount = function(self)
+  shardCount = function(_)
     local count = 0
     if ShardIcon then
       local _, itemLink = GetItemInfo(6265) -- "Soul Shard"
@@ -798,7 +827,7 @@ local summon = {
   end,
 
   ---------------------------------
-  enableButton = function(self, idx, enable)
+  enableButton = function(_, idx, enable)
     if enable == nil then
       enable = true
     end
@@ -877,22 +906,14 @@ local summon = {
 
   ---------------------------------
   summonFail = function(self)
-    local idx = self:findWaitingPlayerIdx(self.summoningPlayer)
-    if idx then
-      db("summon.waitlist", "something went wrong, resetting status of " .. self.summoningPlayer .. " to requested")
-      self:recStatus(self.waiting[idx], "requested")
-      addonData.gossip:status(self.summoningPlayer, "requested")
-    end
+    db("summon.waitlist", "something went wrong, resetting status of " .. self.summoningPlayer .. " to requested")
+    addonData.gossip:status(self.summoningPlayer, "requested")
   end,
 
   ---------------------------------
   summonSuccess = function(self)
-    local idx = self:findWaitingPlayerIdx(self.summoningPlayer)
-    if idx then
-      db("summon.waitlist", "summon succeeded, setting status of " .. self.summoningPlayer .. " to summoned")
-      self:recStatus(self.waiting[idx], "summoned")
-      addonData.gossip:status(self.summoningPlayer, "summoned")
-    end
+    db("summon.waitlist", "summon succeeded, setting status of " .. self.summoningPlayer .. " to summoned")
+    addonData.gossip:status(self.summoningPlayer, "summoned")
   end,
 
   offline = function(self, player, offline)
@@ -938,7 +959,7 @@ local summon = {
   end,
 
   ---------------------------------
-  callback = function(self, event, ...)
+  callback = function(_, event, ...)
     if event == "PLAYER_REGEN_DISABLED" then
       -- entered combat, stop everything or we might get tainted
       SummonFrame:Hide()
@@ -955,6 +976,7 @@ local summon = {
 
   ---------------------------------
   setCurrentLocation = function(self)
+    local oldZone, oldLocation = self.myZone, self.myLocation
     self.myZone, self.myLocation = GetZoneText(), GetMinimapZoneText()
 
     if self.myZone == self.zone and self.myLocation == self.location then
@@ -963,11 +985,21 @@ local summon = {
       if SummonToButton then
         SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
       end
+
+      if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location
+        addonData.gossip:atDestination(true)
+      end
     else
       SummonFrame.destination:SetTextColor(1,1,1,.5)
       SummonFrame.location:SetTextColor(0,1,0,.5)
       if SummonToButton then
         SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+      end
+
+      if self.zone ~= "" and self.location ~= "" then -- destination is set
+        if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location
+          addonData.gossip:atDestination(false)
+        end
       end
     end
 
@@ -982,8 +1014,10 @@ local summon = {
     db("summon.misc", "setting destination: ", location, " in ", zone)
     if location and location ~= "" and zone and zone ~= "" then
       SummonFrame.destination:SetText("Destination: " .. self.zone .. ", " .. self.location)
+      addonData.gossip:atDestination(self.zone == self.myZone and self.location == self.myLocation)
     else
       SummonFrame.destination:SetText("")
+      addonData.gossip:atDestination(false)
     end
   end,
 
@@ -1028,10 +1062,12 @@ local summon = {
   },
 
   ---------------------------------
-  castWatch = function(self, event, target, castUID, spellId, ...)
+  lastCast = "",
+
+  castWatch = function(_, event, target, castUID, spellId, ...)
     db("summon.spellcast", event, " ", target, castUID, spellId, ...)
 
-    local name, rank, icon, castTime, minRange, maxRange = GetSpellInfo(spellId)
+    local name, rank, _, castTime, _, _ = GetSpellInfo(spellId)
     db("summon.spellcast", name, rank, castTime, minrange, maxrange)
 
     -- these events can get posted up to 3 times (at least testing on myself) player, raid1 (me), target
@@ -1087,13 +1123,13 @@ local summon = {
       end
     elseif event == "UNIT_SPELLCAST_INTERRUPTED"
         or event == "UNIT_SPELLCAST_FAILED" then
-      -- something went wrong
-      -- no castid for stop lol
-      if name == "Ritual of Summoning" then
+      -- we can get this multiple times for "player" for the same cast, we only want to act once
+      if name == "Ritual of Summoning" and lastCast ~= castUID then
+        lastCast = castUID
         addonData.summon.summonFail(g_self)
       end
     end
   end,
 }
 
-    addonData.summon = summon
+addonData.summon = summon

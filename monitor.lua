@@ -1,6 +1,6 @@
 -- periodic timers
 
-local addonName, addonData = ...
+local _, addonData = ...
 
 local monitor = {
   sec_t = {},
@@ -9,18 +9,32 @@ local monitor = {
   init = function(self)
     addonData.debug:registerCategory("monitor")
     self.sec_t = self:create(1, self.callback_sec)
-    self.long = self:create(5, self.callback_long)
+    self.long = self:create(2, self.callback_long)
     self:start()
     self.long:Play()
   end,
 
-  create = function(self, i, callback)
+  create = function(_, i, callback, timerRepeat)
     local timer
+    local loopType = "REPEAT"
+
+    if timerRepeat == nil then
+      timerRepeat = true
+    end
+
+    if not timerRepeat then
+      loopType = "NONE"
+    end
+
     timer = frame:CreateAnimationGroup()
     timer.anim = timer:CreateAnimation()
     timer.anim:SetDuration(i)
-    timer:SetLooping("REPEAT")
-    timer:SetScript("OnLoop", callback)
+    timer:SetLooping(loopType)
+    if timerRepeat then
+      timer:SetScript("OnLoop", callback)
+    else
+      timer:SetScript("OnFinished", callback)
+    end
     return timer
   end,
 
@@ -32,15 +46,15 @@ local monitor = {
     self.sec_t:Stop()
   end,
 
-  callback_sec = function(self, event, ...)
+  callback_sec = function()
     addonData.summon:tick()
   end,
 
-  callback_long = function(self, event, ...)
+  callback_long = function()
     addonData.raid:fishArea()
   end,
 
-  callback = function(self, event, ...)
+  callback = function(_, event, ...)
     -- this is a generic debug monitor of events that are under observation
     db("monitor", event, ...)
   end,

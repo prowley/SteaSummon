@@ -1,4 +1,4 @@
-local addonName, addonData = ...
+local _, addonData = ...
 
 
 tmpchanges = {}
@@ -13,7 +13,10 @@ optionsgui = {
         image = "Interface/ICONS/Spell_Shadow_Twilight",
         imageCoords = {0,1,0,1},
         type = "description",
-        name = "One button summoning, shared summoning list..."
+        name = function()
+          local name, _ = UnitName("player")
+          return "One button summoning, shared summoning list... (Options for: " .. name .. ")"
+        end
       },
       general = {
         name = "General",
@@ -44,11 +47,11 @@ optionsgui = {
               [3] = "Only when I am in the active summon list",
               [4] = "Never"
             },
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.show = val
               addonData.summon:showSummons() -- kick off change in display
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.show
             end,
           },
@@ -67,7 +70,8 @@ optionsgui = {
             order = 10,
             type = "description",
             width = "normal",
-            name = "If you are in a group when you log back in within this time, your summon list is preserved"
+            name = "If you are in a group when you log back in within this time, your summon list is preserved. "
+              .. "This saves the list if all addons users in the group log out."
           },
           keep = {
             order = 9,
@@ -81,10 +85,10 @@ optionsgui = {
             step = 1,
             bigStep = 1,
             width = "double",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.waitingKeepTime = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.waitingKeepTime
             end,
           },
@@ -100,11 +104,11 @@ optionsgui = {
             step = 0.1,
             bigStep = 0.1,
             width = "normal",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.windowSize = val
               SummonFrame:SetScale(val)
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.windowSize
             end,
           },
@@ -120,11 +124,11 @@ optionsgui = {
             step = 0.1,
             bigStep = 0.1,
             width = "normal",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.listSize = val
               ButtonFrame:SetScale(val)
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.listSize
             end,
           },
@@ -151,10 +155,10 @@ optionsgui = {
             desc = "a line that posts to raid when someone is summoned",
             type = "input",
             width = "full",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.raidchat = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.raidchat
             end
           },
@@ -164,10 +168,10 @@ optionsgui = {
             desc = "a line that is whipered to the person being summoned",
             type = "input",
             width = "full",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.whisperchat = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.whisperchat
             end
           },
@@ -177,10 +181,10 @@ optionsgui = {
             desc = "a line that posts to say when someone is summoned",
             type = "input",
             width = "full",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.saychat = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.saychat
             end
           }
@@ -208,10 +212,10 @@ optionsgui = {
             type = "input",
             multiline = 23,
             width = "full",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.summonWords = addonData.util:multiLineToTable(val)
             end,
-            get = function(info)
+            get = function()
               return addonData.util:tableToMultiLine(SteaSummonSave.summonWords)
             end
           }
@@ -239,10 +243,10 @@ optionsgui = {
             type = "toggle",
             width = "full",
             descStyle = "inline",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.warlocks = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.warlocks
             end
           },
@@ -253,10 +257,10 @@ optionsgui = {
             type = "toggle",
             width = "full",
             descStyle = "inline",
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.buffs = val
             end,
-            get = function(info)
+            get = function()
               return SteaSummonSave.buffs
             end
           },
@@ -267,10 +271,10 @@ optionsgui = {
             width = "full",
             type = "input",
             multiline = 7,
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.prioplayers = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
             end,
-            get = function(info)
+            get = function()
               return addonData.util:tableToMultiLine(SteaSummonSave.prioplayers)
             end
           },
@@ -281,10 +285,10 @@ optionsgui = {
             width = "full",
             type = "input",
             multiline = 7,
-            set = function(info, val)
+            set = function(_, val)
               SteaSummonSave.shitlist = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
             end,
-            get = function(info)
+            get = function()
               return addonData.util:tableToMultiLine(SteaSummonSave.shitlist)
             end
           }
@@ -312,10 +316,10 @@ optionsgui = {
              type = "toggle",
              width = "full",
              descStyle = "inline",
-             set = function(info, val)
+             set = function(_, val)
                SteaDEBUG.on = val
              end,
-             get = function(info)
+             get = function()
                return SteaDEBUG.on
              end
            },
@@ -326,10 +330,10 @@ optionsgui = {
              type = "toggle",
              width = "full",
              descStyle = "inline",
-             set = function(info, val)
+             set = function(_, val)
                SteaSummonSave.experimental = val
              end,
-             get = function(info)
+             get = function()
                return SteaSummonSave.experimental
              end
            },
@@ -347,10 +351,11 @@ optionsgui = {
              type = "toggle",
              width = "double",
              descStyle = "inline",
-             set = function(info, val)
+             set = function(_, val)
                SteaSummonSave.updates = val
+               addonData.gossip:netOn(val)
              end,
-             get = function(info)
+             get = function()
                return SteaSummonSave.updates
              end
            },

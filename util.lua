@@ -1,23 +1,23 @@
-local addonName, addonData = ...
+local _, addonData = ...
 
 local util = {
-  init = function(self)
+  init = function(_)
     addonData.debug:registerCategory("util")
   end,
 
-  trim = function(self, s)
+  trim = function(_, s)
     return (s:gsub("^%s*(.-)%s*$", "%1"))
   end,
 
-  tableToMultiLine = function(self, table)
+  tableToMultiLine = function(_, table)
     local text = ""
-    for i,word in pairs(table) do
+    for _,word in pairs(table) do
       text = text .. word .. "\n"
     end
     return text
   end,
 
-  case = function(self, text, sep)
+  case = function(_, text, sep)
     local out = ""
     if text ~= nil and text ~= "" then
       local i = 2
@@ -36,39 +36,37 @@ local util = {
     return out
   end,
 
-  multiLineToTable = function(self, text)
+  multiLineToTable = function(_, text)
     return { strsplit("\n", text) }
   end,
 
-  marshalWaitingTable = function(self, table)
+  marshalWaitingTable = function()
     local out = ""
 
-    for i, wait in pair(addonData.summon.waiting) do
-      out = out .. wait[0] .. "+" .. wait[1] .. "+" .. wait[3] .. ","
+    for _, wait in pair(addonData.summon.waiting) do
+      out = out .. addonData.summon:recMarshal(wait) .. ","
     end
 
     return out
   end,
 
-  unmarshalWaitingTable = function(self, marshalled)
+  unmarshalWaitingTable = function(_, marshalled)
     local recs = { strsplit(",", marshalled) }
-    for i, rec in pair(recs) do
-      local player, time, status = strsplit("+", rec)
-      if addonData.summon:findWaitingPlayer(player) == nil then
-        addonData.summon:addWaiting(player)
-      end
+    local waiting = {}
+    for _, rec in pair(recs) do
+      table.insert(waiting, addonData.summon:recUnMarshal(rec))
     end
-    self:sortWaitingTableByTime()
+    addonData.summon.waiting = waiting
   end,
 
-  sortWaitingTableByTime = function(self)
+  sortWaitingTableByTime = function()
     table.sort(addonData.summon.waiting, function(k1, k2)
       return k1[3] > k2[3]
     end)
   end,
 
-  playerClose = function(self, player)
-    local me, void = UnitName("player")
+  playerClose = function(_, player)
+    local me, _ = UnitName("player")
     player = strsplit("-", player) -- might turn up as player-server
     --print("player", player)
 
@@ -82,7 +80,7 @@ local util = {
       --return addonData.raid.inzone[player]
   end,
 
-  playerIsWarlock = function(self, player)
+  playerIsWarlock = function(_, player)
     if player == nil then player = "player" end
     player = strsplit("-", player) -- might turn up as player-server
     local _, class = UnitClass(player)
@@ -93,7 +91,6 @@ local util = {
   playerCanSummon = function(self, player)
     if player == nil then player = "player" end
     player = strsplit("-", player) -- might turn up as player-server
-    local _, class = UnitClass(player)
 
     local level = UnitLevel(player)
     return self:playerIsWarlock(player) and level >= 20
