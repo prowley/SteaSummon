@@ -408,13 +408,13 @@ local summon = {
 
       --- Table of summon info
       addonData.buttons = {}
-      for i=1, 36 do
+      for i=1, 38 do
         self:createButton(i)
       end
 
       --- Setup Next button
-      addonData.buttons[36].Button:SetPoint("TOPLEFT","SummonFrame","TOPLEFT", -10, 10)
-      addonData.buttons[36].Button:SetText("Next")
+      addonData.buttons[38].Button:SetPoint("TOPLEFT","SummonFrame","TOPLEFT", -10, 10)
+      addonData.buttons[38].Button:SetText("Next")
 
 
       --- Resizable
@@ -515,7 +515,7 @@ local summon = {
 
     --- update buttons
     local next = false
-    for i=1, 35 do
+    for i=1, 37 do
       local player
       local summonClick
       local cancelClick
@@ -586,9 +586,9 @@ local summon = {
         if not next and self:recStatus(self.waiting[i]) == L["requested"] and addonData.util:playerCanSummon() then
           next = true
           local spell = GetSpellInfo(698) -- Ritual of Summoning
-          addonData.buttons[36].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
-          addonData.buttons[36].Button:SetScript("OnMouseUp", summonClick)
-          addonData.buttons[36].Button:Show()
+          addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+          addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
+          addonData.buttons[38].Button:Show()
         end
 
         --- Time
@@ -607,7 +607,7 @@ local summon = {
 
     if not next then
       -- all summons left are pending, disable the next button
-      addonData.buttons[36].Button:Hide()
+      addonData.buttons[38].Button:Hide()
     end
 
     --- show summon window
@@ -644,7 +644,7 @@ local summon = {
     local hpad = 5
 
     local parent = addonData.buttonFrame
-    if i == 36 then
+    if i == 38 then
       parent = SummonFrame
     end
 
@@ -659,7 +659,7 @@ local summon = {
     texHighlight = addonData.buttons[i].Button:CreateTexture()
     texPushed = addonData.buttons[i].Button:CreateTexture()
     texDisabled = addonData.buttons[i].Button:CreateTexture()
-    if i < 36 then
+    if i < 38 then
       addonData.buttons[i].Button:SetWidth(bw)
       addonData.buttons[i].Button:SetHeight(bh)
       tex:SetTexture("Interface/Buttons/UI-Panel-Button-Up")
@@ -706,7 +706,7 @@ local summon = {
     addonData.buttons[i].Button:SetAttribute("type1", "macro");
     addonData.buttons[i].Button:SetAttribute("macrotext", "")
 
-    if i < 36 then -- last button we use for next summon, so don't want these
+    if i < 38 then -- last button we use for next summon, so don't want these
       -- Cancel
       addonData.buttons[i].Cancel = CreateFrame("Button", "CancelButton"..i, parent, "UIPanelCloseButtonNoScripts")
       addonData.buttons[i].Cancel:SetWidth(bh)
