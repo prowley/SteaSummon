@@ -21,6 +21,22 @@
 -- sound: RAID_WARNING = 8959,
 
 local addonName, _ = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
+
+-- keybind stuff
+BINDING_HEADER_STEASUMMON = "SteaSummon"
+BINDING_NAME_STEASUMMONNEXT = L["Summon Next"]
+BINDING_NAME_STEASUMMONSETDEST = L["Set Destination"]
+
+SteaSummon = {}
+
+function SteaSummon:ClickNext()
+    addonName.buttons[38].Button:Click("LeftButton")
+end
+
+function SteaSummon:ClickSetDestination()
+    SummonToButton:Click("LeftButton")
+end
 
 -- colored print to chat window
 function cprint(...)

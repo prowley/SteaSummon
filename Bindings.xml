@@ -1,0 +1,8 @@
+<Bindings>
+  <Binding name="STEASUMMONNEXT" header="STEASUMMON" Category="ADDONS">
+    SteaSummon.ClickNext()
+  </Binding>
+  <Binding name="STEASUMMONSETDEST" Category="ADDONS">
+    SteaSummon.ClickSetDestination()
+  </Binding>
+</Bindings>
