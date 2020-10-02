@@ -414,7 +414,7 @@ local summon = {
 
       --- Setup Next button
       addonData.buttons[38].Button:SetPoint("TOPLEFT","SummonFrame","TOPLEFT", -10, 10)
-      addonData.buttons[38].Button:SetText("Next")
+      addonData.buttons[38].Button:SetText(L["Next"])
 
 
       --- Resizable

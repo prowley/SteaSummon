@@ -1,6 +1,10 @@
 --localization file for english/United States
 local L = LibStub("AceLocale-3.0"):NewLocale("SteaSummon", "enUS", true)
 
+-- main.lua
+L["Summon Next"] = true
+L["Set Destination"] = true
+
 -- chat.lua
 L["list"] = true
 L["%name waiting: %number seconds"] = true
@@ -33,9 +37,10 @@ L["pending"] = true
 L["Imagine not having enough mana."] = "Imagine not having enough mana. Now imagine whispering that to yourself when you don't have enough mana."
 L["Reason for list placement"] = true
 L["[W]arlock, [B]uffs, [P]riority, [N]ormal, [L]ast"] = true
-L["summoned"] = 1
-L["Location: %subzone, %zone"] = 1
-L["Destination: %subzone, %zone"] = 1
+L["summoned"] = true
+L["Location: %subzone, %zone"] = true
+L["Destination: %subzone, %zone"] = true
+L["Next"] = true
 
 -- optionsgui.lua
 L["One button summoning, shared summoning list...    (Options for: %name)"] = true
