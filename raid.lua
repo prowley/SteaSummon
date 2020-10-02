@@ -1,5 +1,5 @@
 -- Raid tracking
-local addonName, addonData = ...
+local _, addonData = ...
 
 -- events of interest
 -- GROUP_ROSTER_UPDATE
@@ -20,38 +20,39 @@ local dead = {}
 local raid = {
   inzone = {},
   caninvite = {},
+  groupInit = true,
 
   init = function(self)
     addonData.debug:registerCategory("raid.event")
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      self.groupInit = false
+    end
   end,
 
-  callback = function(self, event, ...)
+  callback = function(_, event, ...)
     db("raid.event", event, ...)
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
-      --addonData.raid:updateRaid()
+      addonData.raid:updateRaid()
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
-      db("raid", event)
-      addonData.gossip:initialize()
+      addonData.raid.groupInit = false
     end
   end,
 
   updateRaid = function(self)
+    if addonData.raid.groupInit then
+      return
+    end
     roster, rosterOld = rosterOld, roster
     old, new = new, old
     wipe(new)
     wipe(roster)
-    local lastGroupNum = GetNumGroupMembers()
+
     for i = 1, GetNumGroupMembers() do
-      local sizeNow = GetNumGroupMembers()
-      if (lastGroupNum ~= sizeNow) then
-        -- I want to know if this ever fires, even if I am not monitoring the raid category
-        db("Group size was", lastGroupNum, "but is now", sizeNow)
-        break -- protect the list
-      end
       local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
+      --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
       if name == nil then
         -- I want to know if this ever fires, even if I am not monitoring the raid category
         db("Got a nil back for name", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
@@ -62,10 +63,15 @@ local raid = {
 
       if rosterOld[name] == nil then
         db("raid", name, "joined the raid.")
+        local myName, _ = UnitName("player")
+        if myName == name then
+          addonData.gossip:raidJoined()
+        end
       end
 
       if (old[name] or rosterOld[name] == nil) and not online then
         db("raid", name, "is offline.")
+        addonData.gossip:raiderLeft(name)
         addonData.summon:offline(name, true)
       elseif old[name] == nil and rosterOld[name] and online then
         db("raid", name, "logged back on.")
@@ -81,14 +87,14 @@ local raid = {
         dead[name] = nil
       end
 
-      if zone == GetZoneText() then
+      if zone == GetMinimapZoneText() then
         if not self.inzone[name] then
-          db("raid", name, "is in zone.")
+          db("raid", name, "is near,", zone)
           self.inzone[name] = true
         end
       else
         if self.inzone[name] then
-          db("raid", name, "left the zone.")
+          db("raid", name, "left area, now in", zone)
           self.inzone[name] = nil
         end
       end
@@ -105,16 +111,28 @@ local raid = {
       if not roster[k] then
         db("raid", k, " left the raid.")
         addonData.summon:remove(k)
+
+        local name, _ = UnitName("player")
+        if k == name then
+          addonData.gossip:raidLeft()
+          wipe(addonData.summon.waiting)
+          wipe(old)
+          wipe(rosterOld)
+          addonData.raid.groupInit = true
+        else
+          addonData.gossip:raiderLeft(k)
+        end
+
         self.inzone[k] = nil
       end
     end
   end,
 
-  isDead = function(self, player)
+  isDead = function(_, player)
     return dead[player] == true
   end,
 
-  isOffline = function(self, player)
+  isOffline = function(_, player)
     return new[player] == nil
   end,
 
@@ -128,7 +146,13 @@ local raid = {
     local lock = 0
     local click = 0
 
-    for k, v in pairs(self.inzone) do
+    if addonData.util:playerCanSummon() then
+      lock = 1
+    else
+      click = 1
+    end
+
+    for k, _ in pairs(self.inzone) do
       if UnitInRange(k) then
         if addonData.util:playerCanSummon(k) then
           lock = lock + 1
