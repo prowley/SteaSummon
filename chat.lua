@@ -78,14 +78,17 @@ local chat = {
 
         if IsInGroup(player) or (player == me and addonData.settings:debug()) then
           addonData.gossip:add(player, event == "CHAT_MSG_WHISPER" )
-          --addonData.summon:addWaiting(name, true)
         end
       end
     end
   end,
 
   raid = function(self, msg, player)
-    self:sendChat(msg, "RAID", "RAID", player)
+    if IsInRaid() then
+      self:sendChat(msg, "RAID", "RAID", player)
+    else
+      self:sendChat(msg, "PARTY", "PARTY", player)
+    end
   end,
 
   say = function(self, msg, player)
@@ -102,7 +105,7 @@ local chat = {
       -- substitute variables in message
       local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
       msg = tstring(msg, patterns)
-
+      msg = "[SteaSummon] " .. msg
       SendChatMessage(msg,channel,channel2,to)
     end
   end
