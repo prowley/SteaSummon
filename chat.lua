@@ -1,15 +1,15 @@
 -- chat message interpretation
 
-local addonName, addonData = ...
+local _, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 local chat = {
-  init = function(self)
+  init = function(_)
     addonData.debug:registerCategory("chat")
   end,
 
-  callback = function (self, event, msg, servername, ...)
-    local me, void = UnitName("player")
+  callback = function (_, event, msg, servername, ...)
+    local me, _ = UnitName("player")
 
     -- don't want randos adding themselves
     player, server = strsplit("-", servername)
@@ -21,7 +21,7 @@ local chat = {
 
     if player == me then
       if msg and msg:find("!SS") == 1 then
-        local prmpt, cmd, args = strsplit(" ", msg)
+        local _, cmd, args = strsplit(" ", msg)
         if cmd == nil then cmd = "list" end
         if args == nil then args = "" end
         cmd = string.lower(cmd)
@@ -31,13 +31,15 @@ local chat = {
           local waitlist = addonData.summon:getWaiting()
           cprint(L["Summon waiting list"])
           count = 0
-          for i,waiting in pairs(waitlist) do
+
+          for _,waiting in pairs(waitlist) do
             local pats = {["%%name"] = waiting[1], ["%%number"] = waiting[2]}
             local s = L["%name waiting: %number seconds"]
             s = tstring(s, pats)
             cprint(s)
             count = count + 1
           end
+          
           local pats = {["%%count"] = count}
           local s = L["%count waiting"]
           s = tstring(s, pats)
@@ -68,17 +70,15 @@ local chat = {
     if msg then
       if string.sub(msg, 1,1) == "-" and addonData.settings:findSummonWord(string.sub(msg, 2)) then
         name, server = strsplit("-", servername)
-        addonData.summon:remove(name)
+        addonData.gossip:arrived(name)
       elseif addonData.settings:findSummonWord(msg) then
         -- someone wants a summon
         name, server = strsplit("-", servername)
         db("chat","adding ", name, "to summon list")
 
-        if IsInGroup(player) or player == me then
-          addonData.summon:addWaiting(name, true)
-          if event == "CHAT_MSG_WHISPER" then
-            addonData.gossip:add(player)
-          end
+        if IsInGroup(player) or (player == me and addonData.settings:debug()) then
+          addonData.gossip:add(player, event == "CHAT_MSG_WHISPER" )
+          --addonData.summon:addWaiting(name, true)
         end
       end
     end
@@ -96,8 +96,8 @@ local chat = {
     self:sendChat(msg, "WHISPER", player, player)
   end,
 
-  sendChat = function(self, msg, channel, channel2, to)
-    db("sendChat ", msg, " ", channel, " ", to)
+  sendChat = function(_, msg, channel, channel2, to)
+    db("chat", "sendChat ", msg, " ", channel, " ", to)
     if msg ~= nil and ms ~= "" then
       -- substitute variables in message
       local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}

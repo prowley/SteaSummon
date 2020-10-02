@@ -1,4 +1,4 @@
-local addonName, addonData = ...
+local _, addonData = ...
 
 City = {
   16609, --"WarChief's Blessing",
@@ -52,10 +52,7 @@ buffs = {
     local out, index, i = {}, 1, 1
 
     while true do
-      local name, rank, icon, count, debuffType, duration,
-        expirationTime, unitCaster, isStealable,
-        shouldConsolidate, spellId
-        = UnitBuff(player, index)
+      local name, icon, _, _, _, _, _, _, _, spellId = UnitBuff(player, index)
 
       index = index + 1
 

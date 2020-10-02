@@ -1,6 +1,6 @@
 -- user config
 
-local addonName, addonData = ...
+local _, addonData = ...
 
 -- defaults
 
@@ -63,13 +63,13 @@ settings = {
     end
   end,
 
-  reset = function(self)
+  reset = function()
     SteaSummonSave = {}
     SteaSummonSave.summonWords = summonWords
     SteaSummonSave.show = 2
     SteaSummonSave.updates = true
     SteaSummonSave.prioplayers = {[1]="Stea"}
-    SteaSummonSave.shitlist = {[1]="Evolym"}
+    SteaSummonSave.shitlist = {}
     SteaSummonSave.warlocks = true
     SteaSummonSave.raidchat = "Summoning %p"
     SteaSummonSave.whisperchat = "Summoning you to %l in %z"
@@ -84,7 +84,7 @@ settings = {
     SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
   end,
 
-  findSummonWord = function(self, phrase)
+  findSummonWord = function(_, phrase)
     for k,v in pairs(SteaSummonSave.summonWords) do
       if v == phrase then
         return k
@@ -93,7 +93,7 @@ settings = {
     return nil
   end,
 
-  findPrioPlayer = function(self, player)
+  findPrioPlayer = function(_, player)
     for k,v in pairs(SteaSummonSave.prioplayers) do
       if v == player then
         return k
@@ -102,7 +102,7 @@ settings = {
     return nil
   end,
 
-  findShitlistPlayer = function(self, player)
+  findShitlistPlayer = function(_, player)
     for k,v in pairs(SteaSummonSave.shitlist) do
       if v == player then
         return k
@@ -118,35 +118,35 @@ settings = {
     return SteaSummonSave.debug
   end,
 
-  showWindow = function(self)
+  showWindow = function()
     return SteaSummonSave.show == 1
   end,
 
-  showActive = function(self)
+  showActive = function()
     return SteaSummonSave.show == 2
   end,
 
-  showJustMe = function(self)
+  showJustMe = function()
     return SteaSummonSave.show == 3
   end,
 
-  showNever = function(self)
+  showNever = function()
     return SteaSummonSave.show == 4
   end,
 
-  useUpdates = function(self)
+  useUpdates = function()
     return SteaSummonSave.updates
   end,
 
-  getSettings = function(self)
+  getSettings = function()
     return SteaSummonSave
   end,
 
-  getWindowPos = function(self)
+  getWindowPos = function()
     return SteaSummonSave.windowPos
   end,
 
-  setWindowPos = function(self, pos)
+  setWindowPos = function(_, pos)
     SteaSummonSave.windowPos = pos
   end,
 }
