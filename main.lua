@@ -7,8 +7,6 @@
 -- TODO: add fancy spell casting next button
 -- TODO: add sound when next button pops
 -- TODO: L10N **** Prio
--- TODO: remove option to turn off comms
--- TODO: figure out how to deal with locks summoning without addon
 -- TODO: key bindings
 
 -- notes:
