@@ -78,6 +78,7 @@ local gossip = {
     db("gossip", "TIMED OUT waiting for netlist")
     self = addonData.gossip
     if self.inInit then
+      self.inInit = false
       -- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
       self.netList = self.tmpList
       -- 4b. upon becoming leader, whisper network list to the temp list
@@ -122,7 +123,7 @@ local gossip = {
     local killList = {}
     for i,v in pairs(self.netList) do
       if not UnitIsConnected(v) then
-        table.insert(self.killList, 1, i)
+        table.insert(killList, 1, i)
       end
     end
 
