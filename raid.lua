@@ -1,5 +1,6 @@
 -- Raid tracking
 local _, addonData = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 -- events of interest
 -- GROUP_ROSTER_UPDATE
@@ -161,7 +162,7 @@ local raid = {
         end
       end
     end
-    SummonFrame.status:SetText("Locks " .. lock .. "\nClickers " ..  click)
+    SummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
 
     return lock,click
   end,

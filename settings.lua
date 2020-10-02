@@ -1,6 +1,7 @@
 -- user config
 
 local _, addonData = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 -- defaults
 
@@ -37,7 +38,7 @@ settings = {
     -- init settings that have been added since release
 
     if SteaSummonSave.shitlist == nil then
-      SteaSummonSave.shitlist = {[1]="Evolym"}
+      SteaSummonSave.shitlist = {}
     end
 
     if SteaSummonSave.windowSize == nil then
@@ -71,9 +72,9 @@ settings = {
     SteaSummonSave.prioplayers = {[1]="Stea"}
     SteaSummonSave.shitlist = {}
     SteaSummonSave.warlocks = true
-    SteaSummonSave.raidchat = "Summoning %p"
-    SteaSummonSave.whisperchat = "Summoning you to %l in %z"
-    SteaSummonSave.saychat = "Summoning %p, please click the portal"
+    SteaSummonSave.raidchat = L["Summoning %p"]
+    SteaSummonSave.whisperchat = L["Summoning you to %l in %z"]
+    SteaSummonSave.saychat = L["Summoning %p, please click the portal"]
     SteaSummonSave.experimental = false
     SteaSummonSave.windowSize = 1
     SteaSummonSave.listSize = 1.5
