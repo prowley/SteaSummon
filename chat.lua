@@ -27,7 +27,7 @@ local chat = {
         cmd = string.lower(cmd)
 
         db("chat","Received command : " .. cmd .. " " .. args)
-        if cmd == "list" then
+        if cmd == L["list"] then
           local waitlist = addonData.summon:getWaiting()
           cprint(L["Summon waiting list"])
           count = 0
