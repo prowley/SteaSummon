@@ -1,6 +1,7 @@
 -- chat message interpretation
 
 local _, addonData = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 local chat = {
   init = function(_)
@@ -28,28 +29,36 @@ local chat = {
         db("chat","Received command : " .. cmd .. " " .. args)
         if cmd == "list" then
           local waitlist = addonData.summon:getWaiting()
-          cprint("Summon wait list")
+          cprint(L["Summon waiting list"])
           count = 0
+
           for _,waiting in pairs(waitlist) do
-            cprint(waiting[1], " waiting: ", waiting[2], " seconds")
+            local pats = {["%%name"] = waiting[1], ["%%number"] = waiting[2]}
+            local s = L["%name waiting: %number seconds"]
+            s = tstring(s, pats)
+            cprint(s)
             count = count + 1
           end
-          cprint(count, " waiting")
+          
+          local pats = {["%%count"] = count}
+          local s = L["%count waiting"]
+          s = tstring(s, pats)
+          cprint(s)
 
         end
 
-        if cmd == "debug" then
-          if args == "on" then addonData.settings:debug(true)
-          elseif args == "off" then addonData.settings:debug(false)
+        if cmd == L["debug"] then
+          if args == L["on"] then addonData.settings:debug(true)
+          elseif args == L["off"] then addonData.settings:debug(false)
           else addonData.settings:debug(not addonData.settings:debug())
           end
 
-          local offon = "OFF"
-          if addonData.settings:debug() then offon = "ON" end
+          local offon = L["off"]
+          if addonData.settings:debug() then offon = L["on"] end
           cprint("Debugging: ", offon)
         end
 
-        if cmd == "add" then
+        if cmd == L["add"] then
           -- add someone to list
           if args ~= "" then
             addonData.summon:addWaiting(args)
@@ -92,9 +101,7 @@ local chat = {
     if msg ~= nil and ms ~= "" then
       -- substitute variables in message
       local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
-      for key, val in pairs(patterns) do
-        msg = string.gsub(msg, key, val)
-      end
+      msg = tstring(msg, patterns)
 
       SendChatMessage(msg,channel,channel2,to)
     end

@@ -28,4 +28,12 @@ function cprint(...)
     print("|cf00fffff", addonName, ":|r ", ...)
 end
 
+function tstring(str, patterns)
+    for key, val in pairs(patterns) do
+        str = string.gsub(str, key, val)
+    end
+
+    return str
+end
+
 start()

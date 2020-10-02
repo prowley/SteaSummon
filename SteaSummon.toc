@@ -1,12 +1,12 @@
 ## Interface: 11305
 ## Title: SteaSummon
-## Notes: Warlock Summoning
+## Notes: One button summoning, shared summoning list...
 ## Author: Stea
 ## Version: 0.5
 ## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG
 
-
 Libs\embeds.xml
+Locale\Locales.xml
 
 debug.lua
 util.lua
