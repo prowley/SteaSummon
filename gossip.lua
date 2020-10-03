@@ -53,8 +53,6 @@ local gossip = {
     -- register addon comms channel
     local commsgood = self:RegisterComm(self.channel, "callback")
     db("addon channel registered: ", commsgood)
-    self.netlistTimer = addonData.monitor:create(5, self.netListTimeout, false)
-    self.atDestTimer = addonData.monitor:create(2, self.atDestAction, false)
     self.me, _ = UnitName("player")
   end,
 
@@ -75,9 +73,9 @@ local gossip = {
 
   ---------------------------------
   netListTimeout = function(self)
-    db("gossip", "TIMED OUT waiting for netlist")
     self = addonData.gossip
     if self.inInit then
+      db("gossip", "TIMED OUT waiting for netlist")
       self.inInit = false
       -- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
       self.netList = self.tmpList
@@ -114,7 +112,7 @@ local gossip = {
       self:SendCommMessage(self.channel, "netreq", "RAID")
       -- 3. if not received, you are the first one on the list and network leader
       table.insert(self.tmpList, 1, self.me)
-      self.netlistTimer:Play()
+      self.netlistTimer = C_Timer.NewTimer(5, self.netListTimeout)
     end
   end,
 
@@ -159,8 +157,10 @@ local gossip = {
   ---------------------------------
   raidLeft = function(self)
     db("gossip", "You left net group")
+    if self.inInit and not self.netlistTimer:isCancelled() then
+      self.netlistTimer:Cancel()
+    end
     self.inInit = true
-    self.netlistTimer:Stop()
     wipe(self.netList)
     self.tmpList = {}
     wipe(self.atDest)
@@ -243,20 +243,26 @@ local gossip = {
   end,
 
   ---------------------------------
-  destination = function(self, zone, location)
+  destination = function(self, zone, location, noSet)
     self:offlineCheck()
 
     local destination = string.gsub(zone .. "+" .. location, " ", "_")
 
     if self:isLeader() then
-      db("gossip", ">> destination >> RAID", zone, location)
-      addonData.summon:setDestination(zone,location)
+      db("gossip", ">> destination >> RAID", destination)
+      if not noSet then
+        addonData.summon:setDestination(zone,location)
+      end
       if not addonData.settings:useUpdates() then
         return
       end
+
+      if zone == "" then
+        self.atDestCount = 0
+      end
       self:SendCommMessage(self.channel, "d " .. destination, "RAID")
     else
-      db("gossip", ">> destination >> WHISPER", zone, location)
+      db("gossip", ">> destination >> WHISPER", destination)
       self:SendCommMessage(self.channel, "d " .. destination, "WHISPER", self.netList[1])
     end
   end,
@@ -305,6 +311,7 @@ local gossip = {
   atDestAction = function(self)
     db("gossip", "checking for zero destination")
     self = addonData.gossip
+    self.atDestTimer = nil
     if self.atDestCount == 0 and self:isLeader() then
       self:destination("", "") -- the raid has moved on
     end
@@ -411,9 +418,12 @@ local gossip = {
       local destination = string.gsub(subcmd, "_", " ")
       local zone, location = strsplit("+", destination)
       db("gossip", "<< destination <<", zone, location)
+      if zone == "" then
+        self.atDestCount = 0
+      end
       addonData.summon:setDestination(zone, location)
       if self:isLeader() then
-        self:destination(zone, location)
+        self:destination(zone, location, true)
       end
 
     elseif cmd == "atD" then
@@ -429,14 +439,14 @@ local gossip = {
         self.atDestCount = self.atDestCount - 1
       end
 
-      if self.atDestCount == 0 then
+      if self.atDestCount == 0 and addonData.summon.zone ~= "" then
         -- on setting destination we will get a storm of atD reports (up to 39), and a good deal of those might be
         -- "not at destination" - so when we reach zero at destination we should wait a bit to get final tally
         -- then decide if we need to null the destination
-        if self.atDestTimer:IsPlaying() then
-          self.atDestTimer:Stop() -- make sure we wait full duration on hitting zero
+        if self.atDestTimer then
+          self.atDestTimer:Cancel() -- make sure we wait full duration on hitting zero
         end
-        self.atDestTimer:Play()
+        self.atDestTimer = C_Timer.NewTimer(5, self.atDestAction)
       end
 
       if self:isLeader() then
@@ -460,7 +470,7 @@ local gossip = {
       if self.inInit then
         -- 2. if within 5 seconds a network list is received, request initialize from leader
         self.inInit = false
-        self.netlistTimer:Stop()
+        self.netlistTimer:Cancel()
         self:initialize()
       end
 
@@ -484,8 +494,8 @@ local gossip = {
       db("gossip", "<< election <<")
       -- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
       if self.inInit then
-        self.netlistTimer:Stop()
-        self.netlistTimer:Play()
+        self.netlistTimer:Cancel()
+        self.netlistTimer = C_Timer.NewTimer(5, self.netListTimeout)
       end
     end
   end

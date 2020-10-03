@@ -87,10 +87,7 @@ function loaded(_, event, ...)
 
     -- wait to set up debug categories until all categories are registered
     -- otherwise the category or its children may not be registered for chat debug messages
-    addonData.debug:chatCat("raid")
-    addonData.debug:chatCat("buffs")
     addonData.debug:chatCat("summon.waitlist")
-    addonData.debug:chatCat("event.event")
     addonData.debug:chatCat("gossip")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 

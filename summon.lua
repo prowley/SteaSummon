@@ -441,6 +441,7 @@ local summon = {
       if addonData.util:playerCanSummon() then
         local summonTo = function(_, button, worked)
           if button == "LeftButton" and worked then
+            self.infoSend = not self.infoSend
             if self.infoSend then
               SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
               addonData.gossip:destination(self.myZone, self.myLocation)
@@ -448,7 +449,6 @@ local summon = {
               SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
               addonData.gossip:destination("", "")
             end
-            self.infoSend = not self.infoSend
           end
         end
 
@@ -996,7 +996,9 @@ local summon = {
 
       if self.zone ~= "" and self.location ~= "" then -- destination is set
         if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location
-          addonData.gossip:atDestination(false)
+          if oldZone == self.zone and oldLocation == self.location then -- from the destination
+            addonData.gossip:atDestination(false)
+          end
         end
       end
     end
@@ -1018,10 +1020,11 @@ local summon = {
       local s = L["Destination: %subzone, %zone"]
       s = tstring(s, pat)
       SummonFrame.destination:SetText(s)
-      addonData.gossip:atDestination(self.zone == self.myZone and self.location == self.myLocation)
+      if self.zone == self.myZone and self.location == self.myLocation then
+        addonData.gossip:atDestination(true)
+      end
     else
       SummonFrame.destination:SetText("")
-      addonData.gossip:atDestination(false)
     end
   end,
 
