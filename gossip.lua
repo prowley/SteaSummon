@@ -17,7 +17,7 @@ local _, addonData = ...
 -- adrec add a record
 -- atD player at destination
 -- retire retire from network
-
+-- edone election result
 
 -- leader/network management
 ----------------------------
@@ -46,6 +46,7 @@ local gossip = {
   atDestCount = 0,
   atDestTimer = nil,
   me = nil,
+  recvElections = 0,
 
   ---------------------------------
   init = function(self)
@@ -54,6 +55,15 @@ local gossip = {
     local commsgood = self:RegisterComm(self.channel, "callback")
     db("addon channel registered: ", commsgood)
     self.me, _ = UnitName("player")
+  end,
+
+  ---------------------------------
+  groupText = function(_)
+    if IsInRaid() then
+      return "RAID"
+    else
+      return "PARTY"
+    end
   end,
 
   ---------------------------------
@@ -79,6 +89,7 @@ local gossip = {
       self.inInit = false
       -- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
       self.netList = self.tmpList
+      self:SendCommMessage(self.channel, "edone", self:groupText())
       -- 4b. upon becoming leader, whisper network list to the temp list
       for i,v in pairs(self.netList) do
         if i ~= 1 then -- skip ourselves
@@ -108,11 +119,11 @@ local gossip = {
     db("gossip", "group joined")
     if self.inInit then
       -- 1. On first raidJoin, request network list
-      db("gossip", ">> netreq >> Broadcast")
-      self:SendCommMessage(self.channel, "netreq", "RAID")
+      db("gossip", ">> netreq >>", self:groupText())
+      self:SendCommMessage(self.channel, "netreq", self:groupText())
       -- 3. if not received, you are the first one on the list and network leader
       table.insert(self.tmpList, 1, self.me)
-      self.netlistTimer = C_Timer.NewTimer(5, self.netListTimeout)
+      self.netlistTimer = C_Timer.NewTimer(2, self.netListTimeout)
     end
   end,
 
@@ -126,7 +137,7 @@ local gossip = {
     end
 
     for _, v in pairs(killList) do
-      table.remove(self,netList, v)
+      table.remove(self.netList, v)
     end
   end,
 
@@ -160,6 +171,7 @@ local gossip = {
     if self.inInit and not self.netlistTimer:isCancelled() then
       self.netlistTimer:Cancel()
     end
+    self.recvElections = 0
     self.inInit = true
     wipe(self.netList)
     self.tmpList = {}
@@ -180,7 +192,7 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> status >> RAID", player, status)
+      db("gossip", ">> status >> ", self:groupText(), player, status)
       local idx = addonData.summon:findWaitingPlayerIdx(player)
       if idx then
         if addonData.summon:recStatus(addonData.summon.waiting[idx]) ~= status then
@@ -188,7 +200,7 @@ local gossip = {
           if not addonData.settings:useUpdates() then
             return
           end
-          self:SendCommMessage(self.channel, "s " .. tostring(idx) .. "+" .. status, "RAID")
+          self:SendCommMessage(self.channel, "s " .. tostring(idx) .. "+" .. status, self:groupText())
         end
       end
     else
@@ -202,13 +214,13 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> arrived >> RAID", player)
+      db("gossip", ">> arrived >>", self:groupText(), player)
       if addonData.summon:findWaitingPlayerIdx(player) then
         addonData.summon:arrived(player)
         if not addonData.settings:useUpdates() then
           return
         end
-        self:SendCommMessage(self.channel, "a " .. player, "RAID")
+        self:SendCommMessage(self.channel, "a " .. player, self:groupText())
       end
     else
       db("gossip", ">> arrived >> WHISPER", player)
@@ -221,7 +233,7 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> add >> RAID", player)
+      db("gossip", ">> add >>", self:groupText(), player)
       local index = addonData.summon:findWaitingPlayerIdx(player)
       if not index then
         local idx = addonData.summon:addWaiting(player)
@@ -229,7 +241,7 @@ local gossip = {
           return
         end
         local rec = addonData.summon:recMarshal(addonData.summon.waiting[idx])
-        self:SendCommMessage(self.channel, "adrec " .. tostring(idx) .. " " .. rec, "RAID")
+        self:SendCommMessage(self.channel, "adrec " .. tostring(idx) .. "_" .. rec, self:groupText())
       else
         addonData.summon:addWaiting(player, true)
         self:status(player, "requested")
@@ -249,7 +261,7 @@ local gossip = {
     local destination = string.gsub(zone .. "+" .. location, " ", "_")
 
     if self:isLeader() then
-      db("gossip", ">> destination >> RAID", destination)
+      db("gossip", ">> destination >>", self:groupText(), destination)
       if not noSet then
         addonData.summon:setDestination(zone,location)
       end
@@ -260,7 +272,7 @@ local gossip = {
       if zone == "" then
         self.atDestCount = 0
       end
-      self:SendCommMessage(self.channel, "d " .. destination, "RAID")
+      self:SendCommMessage(self.channel, "d " .. destination, self:groupText())
     else
       db("gossip", ">> destination >> WHISPER", destination)
       self:SendCommMessage(self.channel, "d " .. destination, "WHISPER", self.netList[1])
@@ -290,8 +302,8 @@ local gossip = {
           return
         end
 
-        db("gossip", ">> atDestination >> RAID", at)
-        self:SendCommMessage(self.channel, "atD " .. self.netList[1] .. "+" .. tostring(at), "RAID")
+        db("gossip", ">> atDestination >>", self:groupText(), at)
+        self:SendCommMessage(self.channel, "atD " .. self.netList[1] .. "+" .. tostring(at), self:groupText())
         if settingSelf then
           if self.atDestCount == 0 then
             if self.atDestTimer:IsPlaying() then
@@ -302,8 +314,7 @@ local gossip = {
         end
       end
     else
-      local me, _ = UnitName("player")
-      self:SendCommMessage(self.channel, "atD " .. me .. "+" .. tostring(at), "WHISPER", self.netList[1])
+      self:SendCommMessage(self.channel, "atD " .. self.me .. "+" .. tostring(at), "WHISPER", self.netList[1])
     end
   end,
 
@@ -324,8 +335,13 @@ local gossip = {
     end
 
     self:offlineCheck()
-    db("gossip", ">> initialize >> WHISPER", self.netList[1])
-    self:SendCommMessage(self.channel, "i", "WHISPER", self.netList[1])
+    local target = self.netList[1]
+    if self:isLeader() then -- can happen on /reload
+      target = self.netList[2]
+    end
+    db("gossip", ">> initialize >> WHISPER", target)
+
+    self:SendCommMessage(self.channel, "i", "WHISPER", target)
   end,
 
   ---------------------------------
@@ -347,18 +363,13 @@ local gossip = {
   receive = function(self, msg, _, sender, ... )
     local cmd, subcmd = strsplit(" ", msg)
 
-    db ("gossip.event", "command", cmd, "from", sender)
+    db ("gossip.event", "message", cmd, "from", sender, "payload:", subcmd)
 
-    if cmd == "s" then
-      p, s = strsplit("-", subcmd)
-      db("gossip", "<< status <<", p, s)
-      addonData.summon:status(p, s)
-
-    elseif cmd == "a" then
+    if cmd == "a" then
       db("gossip", "<< arrived <<", subcmd)
 
       if self:isLeader() then
-        self:arrived()
+        self:arrived(subcmd)
       else
         addonData.summon:arrived(subcmd)
       end
@@ -370,13 +381,15 @@ local gossip = {
       end
 
     elseif cmd == "adrec" then
-      local i, rec = strsplit(" ", subcmd)
+      local i, rec = strsplit("_", subcmd)
       db("gossip", "<< add record <<", rec)
       table.insert(addonData.summon.waiting, tonumber(i), addonData.summon:recUnMarshal(rec))
+      addonData.summon.numwaiting = addonData.summon.numwaiting + 1
       addonData.summon:showSummons()
 
     elseif cmd == "i" then
-      if self:isLeader() then
+      -- initialize requestor, if deputy init leader when they /reload
+      if self:isLeader() or (self.netList[1] == sender and self.netList[2] == self.me) then
         db("gossip", "<< initialize request <<")
         if addonData.summon.numwaiting then
           local data = addonData.util:marshalWaitingTable()
@@ -387,7 +400,7 @@ local gossip = {
           -- next waiting list
           self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender)
           -- then set their destination
-          self.destination(addonData.summon.zone, addonData.summon.location)
+          self:destination(addonData.summon.zone, addonData.summon.location)
         end
       end
 
@@ -406,7 +419,7 @@ local gossip = {
 
     elseif cmd == "dl" then
       db("gossip", "<< at destination list <<")
-      self.atDest = addonData.util:multiLineToTable(subcmd)
+      self.atDest = addonData.util:multiLineToMap(subcmd)
 
     elseif cmd == "l" then
       db("gossip", "<< waiting list <<", subcmd)
@@ -461,12 +474,12 @@ local gossip = {
       if self:isLeader() then
         self:status(player, status)
       else
-        addonData.summon:recStatus(self.waiting[player], status)
+        addonData.summon:recStatus(addonData.summon.waiting[tonumber(player)], status)
       end
 
     elseif cmd == "netlist" then
       db("gossip", "<< netlist <<")
-      self.netList = addonData.util.multiLineToTable(subcmd)
+      self.netList = addonData.util:multiLineToTable(subcmd)
       if self.inInit then
         -- 2. if within 5 seconds a network list is received, request initialize from leader
         self.inInit = false
@@ -483,8 +496,12 @@ local gossip = {
         self:SendCommMessage(self.channel, "e", "WHISPER", sender)
       else
         -- 6. upon receipt of a request for network list, add requester to list
-        table.insert(self.netList, sender)
-        if self:isLeader() then
+        local inTable = addonData.util:isInTable(self.netList, sender)
+        if not inTable then
+          table.insert(self.netList, sender)
+        end
+        -- send netlist, make sure to recover leader when they /reload or something
+        if self:isLeader() or (inTable and self.netList[1] == sender and self.netList[2] == self.me) then
           -- 6a. if network leader, whisper network list
           self:netListSend(sender)
         end
@@ -494,9 +511,20 @@ local gossip = {
       db("gossip", "<< election <<")
       -- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
       if self.inInit then
-        self.netlistTimer:Cancel()
-        self.netlistTimer = C_Timer.NewTimer(5, self.netListTimeout)
+        if not addonData.util:isInTable(self.netList, sender) then
+          db("gossip", "election in progress, waiting some more")
+          self.recvElections = self.recvElections + 1
+          self.netlistTimer:Cancel()
+          self.netlistTimer = C_Timer.NewTimer(self.recvElections + math.random(5), self.netListTimeout)
+        else
+          db("gossip", "election in progress, but I was first, not extending waiting time")
+        end
       end
+
+    elseif cmd == "edone" then
+      db("gossip", "<< election over <<")
+      self.inInit = false
+      self.netlistTimer:Cancel()
     end
   end
 }

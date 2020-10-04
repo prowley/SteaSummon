@@ -122,13 +122,16 @@ local summon = {
   ---------------------------------
   recRemoveIdx = function(self, idx)
     local ret = false
+    if idx and type(idx) == "string" then
+      idx = tonumber(string)
+    end
     if idx and idx <= self.numwaiting then
       db("summon.waitlist.record", "removing", self:recPlayer(self.waiting[idx]), "from the waiting list")
       table.remove(self.waiting, idx)
       self.numwaiting = self.numwaiting - 1
       ret = true
     else
-      db("summon.waitlist.record","invalid index for remove", idx)
+      db("summon.waitlist.record","invalid index for remove", idx, "max:", self.numwaiting)
     end
     return ret
   end,
@@ -460,6 +463,7 @@ local summon = {
         place:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 42, -8)
         place:SetSize(16,16)
         place:SetScript("OnMouseUp", summonTo)
+        place:Hide()
       end
 
       if self.isWarlock then
@@ -521,8 +525,8 @@ local summon = {
       local cancelClick
 
       if self.waiting[i] ~= nil then
-        self:enableButton(i)
         player = self:recPlayer(self.waiting[i])
+        self:enableButton(i, true, player)
         addonData.buttons[i].Button:SetText(player)
         addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[i]), 1, 1))
 
@@ -572,9 +576,7 @@ local summon = {
       -- If summoning warlock, can cancel and send msg to others
       cancelClick = function(_, button, worked)
         if button == "LeftButton" and worked then
-          if self.hasSummoned or player == self.me then
-            addonData.gossip:arrived(player)
-          end
+          addonData.gossip:arrived(player)
           db("summon.display","cancelling", player)
         end
       end
@@ -610,6 +612,16 @@ local summon = {
       addonData.buttons[38].Button:Hide()
     end
 
+    -- summonTo
+
+    if SummonToButton then
+      if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+        SummonToButton:Show()
+      else
+        SummonToButton:Hide()
+      end
+    end
+
     --- show summon window
     local show = false
     if addonData.settings:showWindow() or (addonData.settings:showActive() and self.numwaiting > 0) then
@@ -620,6 +632,10 @@ local summon = {
       end
     end
 
+    if self.numwaiting == 0 then
+      self.hasSummoned = false
+    end
+
     if show then
       SummonFrame:Show()
       if self.numwaiting > 0 then
@@ -628,10 +644,6 @@ local summon = {
     else
       SummonFrame:Hide()
       addonData.monitor:stop() -- stop ui update tick
-    end
-
-    if self.numwaiting == 0 then
-      self.hasSummoned = false
     end
   end,
 
@@ -825,7 +837,7 @@ local summon = {
   end,
 
   ---------------------------------
-  enableButton = function(_, idx, enable)
+  enableButton = function(self, idx, enable, player)
     if enable == nil then
       enable = true
     end
@@ -833,7 +845,11 @@ local summon = {
     if enable then
       if not InCombatLockdown() then
         addonData.buttons[idx].Button:Show()
-        addonData.buttons[idx].Cancel:Show()
+        if self.hasSummoned or player == self.me or (self:isAtDestination() and addonData.util:playerCanSummon()) then
+          addonData.buttons[idx].Cancel:Show()
+        else
+          addonData.buttons[idx].Cancel:Hide()
+        end
         addonData.buttons[idx].Time:Show()
         addonData.buttons[idx].Status:Show()
         addonData.buttons[idx].Priority:Show()
@@ -934,7 +950,13 @@ local summon = {
   end,
 
   remove = function(self, player)
-    return self:recRemove(player)
+    local out
+    if type(player) == "number" then
+      out = self:recRemoveIdx(player)
+    else
+      out = self:recRemove(player)
+    end
+    return out
   end,
 
   dead = function(self, player, dead)
@@ -977,10 +999,11 @@ local summon = {
     local oldZone, oldLocation = self.myZone, self.myLocation
     self.myZone, self.myLocation = GetZoneText(), GetMinimapZoneText()
 
-    if self.myZone == self.zone and self.myLocation == self.location then
+    if self:isAtDestination() then
       SummonFrame.destination:SetTextColor(0,1,0,.5)
       SummonFrame.location:SetTextColor(0,1,0,.5)
       if SummonToButton then
+        self.infoSend = true
         SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
       end
 
@@ -1020,7 +1043,11 @@ local summon = {
       local s = L["Destination: %subzone, %zone"]
       s = tstring(s, pat)
       SummonFrame.destination:SetText(s)
-      if self.zone == self.myZone and self.location == self.myLocation then
+      if self:isAtDestination() then
+        if SummonToButton then
+          self.infoSend = true
+          SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
+        end
         addonData.gossip:atDestination(true)
       end
     else
@@ -1028,6 +1055,12 @@ local summon = {
     end
   end,
 
+  ---------------------------------
+  isAtDestination= function(self)
+    return self.zone == self.myZone and self.location == self.myLocation
+  end,
+
+  ---------------------------------
   usesSoulShard = {
     [27565] = 1, -- Banish
     [8994] = 1, -- banish (again)

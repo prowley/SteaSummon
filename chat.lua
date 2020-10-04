@@ -2,17 +2,21 @@
 
 local _, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
+local gossip = addonData.gossip
+local debug = addonData.debug
+local settings = addonData.settings
+local summon = addonData.summon
 
 local chat = {
   init = function(_)
-    addonData.debug:registerCategory("chat")
+    debug:registerCategory("chat")
   end,
 
   callback = function (_, event, msg, servername, ...)
     local me, _ = UnitName("player")
 
     -- don't want randos adding themselves
-    player, server = strsplit("-", servername)
+    local player, server = strsplit("-", servername)
     if event == "CHAT_MSG_SAY" and player ~= me then
       return
     end
@@ -28,7 +32,7 @@ local chat = {
 
         db("chat","Received command : " .. cmd .. " " .. args)
         if cmd == L["list"] then
-          local waitlist = addonData.summon:getWaiting()
+          local waitlist = summon:getWaiting()
           cprint(L["Summon waiting list"])
           count = 0
 
@@ -48,36 +52,36 @@ local chat = {
         end
 
         if cmd == L["debug"] then
-          if args == L["on"] then addonData.settings:debug(true)
-          elseif args == L["off"] then addonData.settings:debug(false)
-          else addonData.settings:debug(not addonData.settings:debug())
+          if args == L["on"] then settings:debug(true)
+          elseif args == L["off"] then settings:debug(false)
+          else settings:debug(not settings:debug())
           end
 
           local offon = L["off"]
-          if addonData.settings:debug() then offon = L["on"] end
+          if settings:debug() then offon = L["on"] end
           cprint("Debugging: ", offon)
         end
 
         if cmd == L["add"] then
           -- add someone to list
           if args ~= "" then
-            addonData.summon:addWaiting(args)
+            gossip:add(args, true )
           end
         end
       end
     end
 
     if msg then
-      if string.sub(msg, 1,1) == "-" and addonData.settings:findSummonWord(string.sub(msg, 2)) then
+      if string.sub(msg, 1,1) == "-" and settings:findSummonWord(string.sub(msg, 2)) then
         name, server = strsplit("-", servername)
-        addonData.gossip:arrived(name)
-      elseif addonData.settings:findSummonWord(msg) then
+        gossip:arrived(name)
+      elseif settings:findSummonWord(msg) then
         -- someone wants a summon
         name, server = strsplit("-", servername)
         db("chat","adding ", name, "to summon list")
 
-        if IsInGroup(player) or (player == me and addonData.settings:debug()) then
-          addonData.gossip:add(player, event == "CHAT_MSG_WHISPER" )
+        if IsInGroup(player) or (player == me and settings:debug()) then
+          gossip:add(player, event == "CHAT_MSG_WHISPER" )
         end
       end
     end

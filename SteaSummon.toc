@@ -16,8 +16,8 @@ optionsgui.lua
 raid.lua
 summon.lua
 monitor.lua
-chat.lua
 gossip.lua
+chat.lua
 events.lua
 main.lua
 

@@ -11,10 +11,31 @@ local util = {
 
   tableToMultiLine = function(_, table)
     local text = ""
-    for _,word in pairs(table) do
+    local word
+    for key, val in pairs(table) do
+      if type(val) == "string" then
+        word = val
+      else
+        word = key
+      end
       text = text .. word .. "\n"
     end
     return text
+  end,
+
+  multiLineToTable = function(_, text)
+    return { strsplit("\n", text) }
+  end,
+
+  multiLineToMap = function(self,text)
+    local tbl = self:multiLineToTable(text)
+    local map = {}
+
+    for _,v in pairs(tbl) do
+      map[v] = 1
+    end
+
+    return map
   end,
 
   case = function(_, text, sep)
@@ -36,33 +57,59 @@ local util = {
     return out
   end,
 
-  multiLineToTable = function(_, text)
-    return { strsplit("\n", text) }
-  end,
-
   marshalWaitingTable = function()
+    db("summon.waitlist", "marshalling waitlist")
     local out = ""
+    local comma = ""
 
-    for _, wait in pair(addonData.summon.waiting) do
-      out = out .. addonData.summon:recMarshal(wait) .. ","
+    for _, wait in pairs(addonData.summon.waiting) do
+      out = out .. comma .. addonData.summon:recMarshal(wait)
+      if comma == "" then
+        comma = ","
+      end
     end
 
+    db("summon.waitlist", "marshalled waitlist:", out)
     return out
   end,
 
   unmarshalWaitingTable = function(_, marshalled)
+    db("summon.waitlist", "unmarshalling waitlist:", marshalled)
+    wipe(addonData.summon.waiting)
+    if not marshalled or marshalled == "" then
+      addonData.summon.numwaiting = 0
+      return
+    end
     local recs = { strsplit(",", marshalled) }
     local waiting = {}
-    for _, rec in pair(recs) do
-      table.insert(waiting, addonData.summon:recUnMarshal(rec))
+    local numwaiting = 0
+    if recs and #recs > 0 then
+      for _, rec in pairs(recs) do
+        table.insert(waiting, addonData.summon:recUnMarshal(rec))
+        numwaiting = numwaiting + 1
+      end
     end
     addonData.summon.waiting = waiting
+    addonData.summon.numwaiting = numwaiting
   end,
 
   sortWaitingTableByTime = function()
     table.sort(addonData.summon.waiting, function(k1, k2)
       return k1[3] > k2[3]
     end)
+  end,
+
+  isInTable = function(self, tbl, item)
+    local inTable = false
+
+    for i,v in pairs(tbl) do
+      if v == item then
+        inTable = true
+        break
+      end
+    end
+
+    return inTable
   end,
 
   playerClose = function(_, player)
@@ -77,7 +124,7 @@ local util = {
     if UnitInRange(player) then
       return true
     end
-      --return addonData.raid.inzone[player]
+    --return addonData.raid.inzone[player]
   end,
 
   playerIsWarlock = function(_, player)
