@@ -16,6 +16,7 @@ local summon = {
   isWarlock = false,
   infoSend = false,
   me = "",
+  dirty = true, -- waiting list changed flag, to begin we want to show load list so default dirty
 
   ---------------------------------
   init = function(self)
@@ -51,6 +52,14 @@ local summon = {
   end,
 
   ---------------------------------
+  listDirty = function(self, dirty)
+    if dirty ~= nil then
+      self.dirty = dirty
+    end
+    return self.dirty
+  end,
+
+  ---------------------------------
   waitRecord = function(self, player, time, status, prioReason)
     local rec
     rec = {player, time, status, prioReason}
@@ -75,8 +84,9 @@ local summon = {
   end,
 
   ---------------------------------
-  recPlayer = function(_, rec, val)
+  recPlayer = function(self, rec, val)
     if val then
+      self:listDirty(true)
       db("summon.waitlist.record","setting record player value:", val)
       rec[1] = val
     end
@@ -84,8 +94,9 @@ local summon = {
   end,
 
   ---------------------------------
-  recTime = function(_, rec, val)
+  recTime = function(self, rec, val)
     if val then
+      self:listDirty(true)
       db("summon.waitlist.record","setting record time value:", val)
       rec[2] = val
     end
@@ -93,15 +104,17 @@ local summon = {
   end,
 
   ---------------------------------
-  recTimeIncr = function(_, rec)
+  recTimeIncr = function(self, rec)
+    self:listDirty(true)
     rec[2] = rec[2] + 1
     db("summon.tick","setting record time value:", rec[2]) -- too verbose for summon.waitlist.record
     return rec[2]
   end,
 
   ---------------------------------
-  recStatus = function(_, rec, val)
+  recStatus = function(self, rec, val)
     if val then
+      self:listDirty(true)
       db("summon.waitlist.record","setting record status value:", val)
       rec[3] = val
     end
@@ -109,8 +122,9 @@ local summon = {
   end,
 
   ---------------------------------
-  recPrio = function(_, rec, val)
+  recPrio = function(self, rec, val)
     if val then
+      self:listDirty(true)
       db("summon.waitlist.record","setting record priority reason value:", val)
       rec[4] = val
     end
@@ -134,6 +148,7 @@ local summon = {
       idx = tonumber(string)
     end
     if idx and idx <= self.numwaiting then
+      self:listDirty(true)
       db("summon.waitlist.record", "removing", self:recPlayer(self.waiting[idx]), "from the waiting list")
       table.remove(self.waiting, idx)
       self.numwaiting = self.numwaiting - 1
@@ -145,6 +160,7 @@ local summon = {
   end,
 
   recAdd = function(self, rec, pos)
+    self:listDirty(true)
     if not pos or pos > self.numwaiting then
       db("summon.waitlist.record","appending record to waiting list for", self:recPlayer(rec))
       table.insert(self.waiting, rec)
@@ -260,25 +276,12 @@ local summon = {
       self:recAdd(self:waitRecord(player, 0, L["requested"], L["Normal"]), i)
     end
 
-    -- finally, this player may have come from an addon peer, so we need to check player status
-    db("summon.waitlist", player, "dead:", addonData.raid:isDead(player), "offline:", addonData.raid:isOffline(player))
-    if addonData.raid:isDead(player) then
-      local wait = self:findWaitingPlayer(player)
-      self:recStatus(wait, L["dead"])
-    end
-
-    if addonData.raid:isOffline(player) then
-      local wait = self:findWaitingPlayer(player)
-      self:recStatus(wait, L["offline"])
-    end
-
     db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
     return index
   end,
 
-  ---------------------------------
-  tick = function(self)
+  timerSecondTick = function(self)
     --- update timers
     -- yea this is dumb, but time doesnt really work in wow
     -- so we count (rough) second ticks for how long someone has been waiting
@@ -286,7 +289,10 @@ local summon = {
     for _, wait in pairs(self.waiting) do
       self:recTimeIncr(wait)
     end
+  end,
 
+  ---------------------------------
+  tick = function(self)
     --- detect arriving players
     local players = {}
     for _, wait in pairs(self.waiting) do
@@ -307,7 +313,7 @@ local summon = {
     end
 
     --- maintain gossip list
-    addonData.gossip:offlineCheck()
+    addonData.gossip:offlineCheck() -- TODO: probably unnecessary
 
     --- update display
     self:showSummons()
@@ -525,6 +531,9 @@ local summon = {
       db("summon.display","Screen Size (w/h):", GetScreenWidth(), GetScreenHeight() )
     end
 
+    ------------------------------------------------------------
+    --- Start of on tick visual updates
+    ------------------------------------------------------------
     --- update buttons
     local next = false
     for i=1, 37 do
@@ -538,12 +547,12 @@ local summon = {
         addonData.buttons[i].Button:SetText(player)
         addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[i]), 1, 1))
 
-        if self:recStatus(self.waiting[i]) == L["offline"] or self:recStatus(self.waiting[i]) == L["dead"] then
+        if self:offline(player) or self:dead(player) then
           addonData.buttons[i].Button:SetEnabled(false)
           addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
           addonData.buttons[i].Button:SetAttribute("macrotext", "")
           addonData.buttons[i].Button:SetScript("OnMouseUp", nil)
-        else
+        elseif self:listDirty() then
           addonData.buttons[i].Button:SetEnabled(true)
           _, class = UnitClass(player)
           r,g,b,_ = GetClassColor(class)
@@ -578,55 +587,63 @@ local summon = {
         self:enableButton(i, false)
       end
 
-      --- Cancel Button
-      -- Can cancel from own UI
-      -- Cancelling self sends msg to others
-      -- If summoning warlock, can cancel and send msg to others
-      cancelClick = function(_, button, worked)
-        if button == "LeftButton" and worked then
-          addonData.gossip:arrived(player)
-          db("summon.display","cancelling", player)
-        end
-      end
+      if self:listDirty() then
+        -- skip the rest of the visual updates
 
-      addonData.buttons[i].Cancel:SetScript("OnMouseUp", cancelClick)
-
-      if self.waiting[i]  then
-        --- Next Button
-        if not next and self:recStatus(self.waiting[i]) == L["requested"] and addonData.util:playerCanSummon() then
-          next = true
-          local spell = GetSpellInfo(698) -- Ritual of Summoning
-          addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
-          addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
-          addonData.buttons[38].Button:Show()
+        --- Cancel Button
+        -- Can cancel from own UI
+        -- Cancelling self sends msg to others
+        -- If summoning warlock, can cancel and send msg to others
+        cancelClick = function(_, button, worked)
+          if button == "LeftButton" and worked then
+            addonData.gossip:arrived(player)
+            db("summon.display","cancelling", player)
+          end
         end
 
-        --- Time
-        addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(self:recTime(self.waiting[i]))))
-        local strwd = addonData.buttons[i].Time["FS"]:GetStringWidth()
-        if strwd < 60 then
-          addonData.buttons[i].Time:SetWidth(80)
+        addonData.buttons[i].Cancel:SetScript("OnMouseUp", cancelClick)
+
+        if self.waiting[i]  then
+          --- Next Button
+          if not next and self:recStatus(self.waiting[i]) == L["requested"] and addonData.util:playerCanSummon() then
+            next = true
+            local spell = GetSpellInfo(698) -- Ritual of Summoning
+            addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
+            addonData.buttons[38].Button:Show()
+          end
+
+          --- Time
+          local noSecs = false
+          if tonumber(self:recTime(self.waiting[i])) > 59 then
+            noSecs = true
+          end
+          addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(self:recTime(self.waiting[i]), noSecs)))
+          local strwd = addonData.buttons[i].Time["FS"]:GetStringWidth()
+          if strwd < 70 then
+            addonData.buttons[i].Time["FS"]:SetWidth(80)
+          else
+            addonData.buttons[i].Time:SetWidth(strwd+20)
+            addonData.buttons[i].Time["FS"]:SetWidth(strwd+10)
+          end
+
+          --- Status
+          addonData.buttons[i].Status["FS"]:SetText(self:recStatus(self.waiting[i]))
+        end
+
+        if not next then
+          -- all summons left are pending, disable the next button
+          addonData.buttons[38].Button:Hide()
+        end
+      end -- skip visual updates
+
+      --- summonTo
+      if SummonToButton then
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+          SummonToButton:Show()
         else
-          addonData.buttons[i].Time:SetWidth(strwd+20)
+          SummonToButton:Hide()
         end
-
-        --- Status
-        addonData.buttons[i].Status["FS"]:SetText(self:recStatus(self.waiting[i]))
-      end
-    end
-
-    if not next then
-      -- all summons left are pending, disable the next button
-      addonData.buttons[38].Button:Hide()
-    end
-
-    -- summonTo
-
-    if SummonToButton then
-      if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        SummonToButton:Show()
-      else
-        SummonToButton:Hide()
       end
     end
 
@@ -653,6 +670,8 @@ local summon = {
       SummonFrame:Hide()
       addonData.monitor:stop() -- stop ui update tick
     end
+
+    self:listDirty(false)
   end,
 
   ---------------------------------
@@ -948,23 +967,23 @@ local summon = {
     addonData.gossip:status(self.summoningPlayer, L["summoned"])
   end,
 
-  offline = function(self, player, offline)
+  offline = function(self, player)
+    local offline = not UnitIsConnected(player)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
-      if offline then
+      if offline and not self:recStatus(self.waiting[idx]) == L["offline"] then
         db("summon.waitlist", "setting status of " .. player .. " to offline")
         state = L["offline"]
-      else
-        if self:recStatus(self.waiting[idx]) == L["offline"] then
-          db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
-          state = L["requested"]
-        end
+      elseif not online and self:recStatus(self.waiting[idx]) == L["offline"] then
+        db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
+        state = L["requested"]
       end
       if state ~= "" then
         self:recStatus(self.waiting[idx], state)
       end
     end
+    return offline
   end,
 
   remove = function(self, player)
@@ -977,23 +996,23 @@ local summon = {
     return out
   end,
 
-  dead = function(self, player, dead)
+  dead = function(self, player)
+    local dead = UnitIsDeadOrGhost(player)
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
-      if dead then
+      if dead and not self.waiting[idx][3] == L["dead"] then
         state = L["dead"]
         db("summon.waitlist", "setting status of", player, "to dead")
-      else
-        if self.waiting[idx][3] == L["dead"] then
-          db("summon.waitlist", "setting status of", player, "from dead to requested")
-          state = L["requested"]
-        end
+      elseif not dead and self.waiting[idx][3] == L["dead"] then
+        db("summon.waitlist", "setting status of", player, "from dead to requested")
+        state = L["requested"]
       end
       if state ~= "" then
         self:recStatus(self.waiting[idx], state)
       end
     end
+    return dead
   end,
 
   ---------------------------------

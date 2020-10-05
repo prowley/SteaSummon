@@ -91,6 +91,7 @@ local util = {
     end
     addonData.summon.waiting = waiting
     addonData.summon.numwaiting = numwaiting
+    addonData.summon:listDirty(true)
   end,
 
   sortWaitingTableByTime = function()
@@ -99,10 +100,10 @@ local util = {
     end)
   end,
 
-  isInTable = function(self, tbl, item)
+  isInTable = function(_, tbl, item)
     local inTable = false
 
-    for i,v in pairs(tbl) do
+    for _,v in pairs(tbl) do
       if v == item then
         inTable = true
         break
