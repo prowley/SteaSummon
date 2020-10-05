@@ -35,6 +35,8 @@ local _, addonData = ...
 -- 9. if comms setting turned on, and in group, goto 1
 --10. if comms setting turned off, and in group, send withdrawing
 
+local DEFAULT_NETLIST_TIME = 5
+
 local gossip = {
   channel = "SteaSummon",
   netlistTimer = nil,
@@ -42,6 +44,7 @@ local gossip = {
   netList = {},
   tmpList = {},
   inInit = true,
+  postInit = false,
   atDest = {},
   atDestCount = 0,
   atDestTimer = nil,
@@ -74,8 +77,8 @@ local gossip = {
       end
     else
       if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        db("gossip", ">> retire >> Broadcast")
-        self:SendCommMessage(self.channel, "retire", "RAID")
+        db("gossip", ">> retire >>", self:groupText())
+        self:SendCommMessage(self.channel, "retire", self:groupText())
       end
       self:raidLeft()
     end
@@ -89,7 +92,9 @@ local gossip = {
       self.inInit = false
       -- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
       self.netList = self.tmpList
-      self:SendCommMessage(self.channel, "edone", self:groupText())
+      if self.recvElections > 0 then
+        self:SendCommMessage(self.channel, "edone", self:groupText())
+      end
       -- 4b. upon becoming leader, whisper network list to the temp list
       for i,v in pairs(self.netList) do
         if i ~= 1 then -- skip ourselves
@@ -106,7 +111,7 @@ local gossip = {
     end
 
     local msg = "netlist " .. addonData.util:tableToMultiLine(self.netList)
-    db("gossip", ">> netlist send >> whisper", player)
+    db("gossip", ">> netlist send >> WHISPER", player)
     self:SendCommMessage(self.channel, msg, "WHISPER", player)
   end,
 
@@ -123,7 +128,7 @@ local gossip = {
       self:SendCommMessage(self.channel, "netreq", self:groupText())
       -- 3. if not received, you are the first one on the list and network leader
       table.insert(self.tmpList, 1, self.me)
-      self.netlistTimer = C_Timer.NewTimer(2, self.netListTimeout)
+      self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME, self.netListTimeout)
     end
   end,
 
@@ -192,7 +197,6 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> status >> ", self:groupText(), player, status)
       local idx = addonData.summon:findWaitingPlayerIdx(player)
       if idx then
         if addonData.summon:recStatus(addonData.summon.waiting[idx]) ~= status then
@@ -200,6 +204,7 @@ local gossip = {
           if not addonData.settings:useUpdates() then
             return
           end
+          db("gossip", ">> status >> ", self:groupText(), player, status)
           self:SendCommMessage(self.channel, "s " .. tostring(idx) .. "+" .. status, self:groupText())
         end
       end
@@ -214,12 +219,12 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> arrived >>", self:groupText(), player)
       if addonData.summon:findWaitingPlayerIdx(player) then
         addonData.summon:arrived(player)
         if not addonData.settings:useUpdates() then
           return
         end
+        db("gossip", ">> arrived >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "a " .. player, self:groupText())
       end
     else
@@ -233,7 +238,6 @@ local gossip = {
     self:offlineCheck()
 
     if self:isLeader() then
-      db("gossip", ">> add >>", self:groupText(), player)
       local index = addonData.summon:findWaitingPlayerIdx(player)
       if not index then
         local idx = addonData.summon:addWaiting(player)
@@ -241,6 +245,7 @@ local gossip = {
           return
         end
         local rec = addonData.summon:recMarshal(addonData.summon.waiting[idx])
+        db("gossip", ">> adrec >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "adrec " .. tostring(idx) .. "_" .. rec, self:groupText())
       else
         addonData.summon:addWaiting(player, true)
@@ -314,6 +319,7 @@ local gossip = {
         end
       end
     else
+      db("gossip", ">> atDestination >> WHISPER", self.netList[1])
       self:SendCommMessage(self.channel, "atD " .. self.me .. "+" .. tostring(at), "WHISPER", self.netList[1])
     end
   end,
@@ -349,7 +355,7 @@ local gossip = {
     if prefix ~= self.channel then
       return
     end
-    db("gossip.event", "prefix:", prefix, "msg:", msg, "dist:", dist, "sender:", sender, ...)
+    --db("gossip.event", "prefix:", prefix, "msg:", msg, "dist:", dist, "sender:", sender, ...)
     if not addonData.settings:useUpdates() then
       return
     else
@@ -405,6 +411,7 @@ local gossip = {
       end
 
     elseif cmd == "retire" then
+      db("gossip", "<< retire <<", sender)
       local idx
 
       for i, v in pairs(self.netList) do
@@ -480,7 +487,7 @@ local gossip = {
     elseif cmd == "netlist" then
       db("gossip", "<< netlist <<")
       self.netList = addonData.util:multiLineToTable(subcmd)
-      if self.inInit then
+      if self.inInit or self.postInit then
         -- 2. if within 5 seconds a network list is received, request initialize from leader
         self.inInit = false
         self.netlistTimer:Cancel()
@@ -493,6 +500,7 @@ local gossip = {
       -- whisper election and add the requester to a temp list,
       if self.inInit then
         table.insert(self.tmpList, sender)
+        db("gossip", ">> election >>")
         self:SendCommMessage(self.channel, "e", "WHISPER", sender)
       else
         -- 6. upon receipt of a request for network list, add requester to list
@@ -515,15 +523,18 @@ local gossip = {
           db("gossip", "election in progress, waiting some more")
           self.recvElections = self.recvElections + 1
           self.netlistTimer:Cancel()
-          self.netlistTimer = C_Timer.NewTimer(self.recvElections + math.random(5), self.netListTimeout)
+          self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME + self.recvElections + math.random(5), self.netListTimeout)
         else
           db("gossip", "election in progress, but I was first, not extending waiting time")
         end
+      else
+        db("gossip", "election in progress reported, but I am already out of the init phase, ignoring")
       end
 
     elseif cmd == "edone" then
       db("gossip", "<< election over <<")
       self.inInit = false
+      self.postInit = true
       self.netlistTimer:Cancel()
     end
   end

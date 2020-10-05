@@ -9,6 +9,7 @@ function start()
   -- build callback table
   call["ADDON_LOADED"] = loaded
   call["PLAYER_ENTERING_WORLD"] = playerEnter
+  call["PLAYER_LOGOUT"] = addonData.settings.saveOnLogout
   call["CHAT_MSG_PARTY"] = addonData.chat.callback
   call["CHAT_MSG_PARTY_LEADER"] = addonData.chat.callback
   call["CHAT_MSG_RAID"] = addonData.chat.callback

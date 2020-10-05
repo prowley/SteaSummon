@@ -20,22 +20,22 @@
 -- button fram UI-Quickslot /-Depress
 -- sound: RAID_WARNING = 8959,
 
-local addonName, _ = ...
+local addonName, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 -- keybind stuff
 BINDING_HEADER_STEASUMMON = "SteaSummon"
-BINDING_NAME_STEASUMMONNEXT = L["Summon Next"]
-BINDING_NAME_STEASUMMONSETDEST = L["Set Destination"]
+_G["BINDING_NAME_CLICK SteaSummonButton38:LeftButton"] = L["Summon Next"]
+_G["BINDING_NAME_CLICK SummonToButton:LeftButton"] = L["Set Destination"]
 
 SteaSummon = {}
 
 function SteaSummon:ClickNext()
-    addonName.buttons[38].Button:Click("LeftButton")
+    addonData.summon:ClickNext()
 end
 
 function SteaSummon:ClickSetDestination()
-    SummonToButton:Click("LeftButton")
+    addonData.summon:ClickSetDestination()
 end
 
 -- colored print to chat window

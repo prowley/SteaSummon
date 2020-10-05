@@ -147,22 +147,30 @@ local raid = {
     local lock = 0
     local click = 0
 
-    if addonData.util:playerCanSummon() then
-      lock = 1
-    else
-      click = 1
-    end
+    if SteaSummonSave.experimental then
+      --[[----------------
+            EXPERIMENTAL
+      --------------------]]
+      if addonData.util:playerCanSummon() then
+        lock = 1
+      else
+        click = 1
+      end
 
-    for k, _ in pairs(self.inzone) do
-      if UnitInRange(k) then
-        if addonData.util:playerCanSummon(k) then
-          lock = lock + 1
-        else
-          click = click + 1
+      for k, _ in pairs(self.inzone) do
+        if UnitInRange(k) then
+          if addonData.util:playerCanSummon(k) then
+            lock = lock + 1
+          else
+            click = click + 1
+          end
         end
       end
+      SummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
+      --[[----------------
+            EXPERIMENTAL
+      --------------------]]
     end
-    SummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
 
     return lock,click
   end,

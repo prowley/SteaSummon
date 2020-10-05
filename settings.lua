@@ -52,7 +52,7 @@ settings = {
     if SteaSummonSave.waiting == nil then
       SteaSummonSave.waiting = {}
       SteaSummonSave.timeStamp = 0
-      SteaSummonSave.waitingKeepTime = 0
+      SteaSummonSave.waitingKeepTime = 5
     end
 
     if SteaSummonSave.buffs == nil then
@@ -67,7 +67,11 @@ settings = {
   reset = function()
     SteaSummonSave = {}
     SteaSummonSave.summonWords = summonWords
-    SteaSummonSave.show = 2
+    if addonData.util:playerIsWarlock() then
+      SteaSummonSave.show = 2
+    else
+      SteaSummonSave.show = 3
+    end
     SteaSummonSave.updates = true
     SteaSummonSave.prioplayers = {[1]="Stea"}
     SteaSummonSave.shitlist = {}
@@ -83,6 +87,11 @@ settings = {
     SteaSummonSave.waitingKeepTime = 5
     SteaSummonSave.buffs = true
     SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
+  end,
+
+  saveOnLogout = function(self, event, ...)
+    --- timestamp the list
+    SteaSummonSave.timeStamp = GetTime()
   end,
 
   findSummonWord = function(_, phrase)

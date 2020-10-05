@@ -31,10 +31,13 @@ local summon = {
     self.me = strsplit("-", self.me)
 
     local ts = GetTime()
-    db("summon", "saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
-    if not IsInGroup()
+
+    if not IsInGroup(LE_PARTY_CATEGORY_HOME)
         or SteaSummonSave.waitingKeepTime == 0
         or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
+      db("", "wiping wait list")
+      db("", "saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
+      db("", "group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       wipe(SteaSummonSave.waiting)
     end
 
@@ -306,9 +309,6 @@ local summon = {
 
     --- update our location
     self:setCurrentLocation()
-
-    --- timestamp the list (maybe move to logout event)
-    SteaSummonSave.timeStamp = GetTime()
   end,
 
   ---------------------------------
@@ -442,8 +442,8 @@ local summon = {
       rb:SetScript("OnMouseUp", movefunc)
 
       if addonData.util:playerCanSummon() then
-        local summonTo = function(_, button, worked)
-          if button == "LeftButton" and worked then
+        local summonTo = function(_, button)
+          if button == nil or button == "LeftButton" then
             self.infoSend = not self.infoSend
             if self.infoSend then
               SummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
@@ -456,12 +456,15 @@ local summon = {
         end
 
         --- summon to button
-        local place = CreateFrame("Button", "SummonToButton", SummonFrame)
+        local place = CreateFrame("Button", "SummonToButton", SummonFrame, "SecureActionButtonTemplate")
         place:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetHighlightTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetPushedTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetPoint("TOPLEFT","SummonFrame", "TOPLEFT", 42, -8)
         place:SetSize(16,16)
+        place:RegisterForClicks("LeftButtonUp")
+        place:SetAttribute("type", "macro")
+        place:SetAttribute("macrotext", "")
         place:SetScript("OnMouseUp", summonTo)
         place:Hide()
       end
@@ -547,8 +550,8 @@ local summon = {
           local z,l = self:getCurrentLocation()
 
           if (addonData.util:playerCanSummon()) then
-            summonClick = function(_, button, worked)
-              if button == "LeftButton" and worked then
+            summonClick = function(_, button)
+              if button == nil or button == "LeftButton" then
                 if UnitPower("player") >= 300 then
                   db("summon.display","summoning ", player)
                   addonData.gossip:status(player, L["pending"])
@@ -663,7 +666,7 @@ local summon = {
     local tex, texDisabled,texHighlight, texPushed, icon
 
     addonData.buttons[i] = {}
-    addonData.buttons[i].Button = CreateFrame("Button", "SummonButton"..i, parent, "SecureActionButtonTemplate");
+    addonData.buttons[i].Button = CreateFrame("Button", "SteaSummonButton"..i, parent, "SecureActionButtonTemplate");
     addonData.buttons[i].Button:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", wpad,-(((i-1)*bh)+hpad))
     addonData.buttons[i].Button:SetText("Stea")
     addonData.buttons[i].Button:SetNormalFontObject("GameFontNormalSmall")
@@ -715,18 +718,18 @@ local summon = {
     addonData.buttons[i].Button:SetDisabledTexture(texDisabled)
 
     addonData.buttons[i].Button:RegisterForClicks("LeftButtonUp")
-    addonData.buttons[i].Button:SetAttribute("type1", "macro");
+    addonData.buttons[i].Button:SetAttribute("type", "macro");
     addonData.buttons[i].Button:SetAttribute("macrotext", "")
 
     if i < 38 then -- last button we use for next summon, so don't want these
-      -- Cancel
+      --- Cancel
       addonData.buttons[i].Cancel = CreateFrame("Button", "CancelButton"..i, parent, "UIPanelCloseButtonNoScripts")
       addonData.buttons[i].Cancel:SetWidth(bh)
       addonData.buttons[i].Cancel:SetHeight(bh)
       addonData.buttons[i].Cancel:SetText("X")
       addonData.buttons[i].Cancel:SetPoint("TOPLEFT","ButtonFrame","TOPLEFT", 10,-(((i-1)*bh)+hpad))
 
-      -- Wait Time
+      --- Wait Time
       addonData.buttons[i].Time = CreateFrame("Frame", "SummonWaitTime"..i, addonData.buttonFrame)
       addonData.buttons[i].Time:SetWidth(bw)
       addonData.buttons[i].Time:SetHeight(bh)
@@ -747,7 +750,7 @@ local summon = {
       addonData.buttons[i].Time["FS"]:SetFontObject("GameFontNormalSmall")
       addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(0)))
 
-      -- Priority
+      --- Priority
       addonData.buttons[i].Priority = CreateFrame("Frame", "SummonPriority"..i, addonData.buttonFrame)
       addonData.buttons[i].Priority:SetWidth(bh)
       addonData.buttons[i].Priority:SetHeight(bh)
@@ -779,7 +782,7 @@ local summon = {
       addonData.buttons[i].Priority["FS"]:SetTextColor(1,1,1)
       addonData.buttons[i].Priority["FS"]:SetText("N")
 
-      -- Status
+      --- Status
       addonData.buttons[i].Status = CreateFrame("Frame", "SummonStatus"..i, addonData.buttonFrame)
       addonData.buttons[i].Status:SetWidth(bw)
       addonData.buttons[i].Status:SetHeight(bh)
@@ -836,6 +839,16 @@ local summon = {
     end
   end,
 
+  ---------------------------------
+  ClickNext = function()
+    addonData.buttons[38].Button:Click("LeftButton")
+  end,
+
+  ClickSetDestination = function()
+    if SummonToButton then
+      SummonToButton:Click("LeftButton")
+    end
+  end,
   ---------------------------------
   enableButton = function(self, idx, enable, player)
     if enable == nil then
