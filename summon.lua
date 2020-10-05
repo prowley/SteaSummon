@@ -32,12 +32,17 @@ local summon = {
 
     local ts = GetTime()
 
+    -- sanity debug
+    for i,v in pairs(SteaSummonSave.waiting) do
+      db("waitlist", i, v)
+    end
+
     if not IsInGroup(LE_PARTY_CATEGORY_HOME)
         or SteaSummonSave.waitingKeepTime == 0
         or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
-      db("", "wiping wait list")
-      db("", "saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
-      db("", "group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
+      db("wiping wait list")
+      db("saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
+      db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       wipe(SteaSummonSave.waiting)
     end
 

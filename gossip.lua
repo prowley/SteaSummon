@@ -55,8 +55,8 @@ local gossip = {
   init = function(self)
     addonData.debug:registerCategory("gossip.event")
     -- register addon comms channel
-    local commsgood = self:RegisterComm(self.channel, "callback")
-    db("addon channel registered: ", commsgood)
+    self:RegisterComm(self.channel, "callback")
+    -- RegisterComm never returns anything, not good imo
     self.me, _ = UnitName("player")
   end,
 

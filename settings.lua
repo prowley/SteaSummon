@@ -50,6 +50,7 @@ settings = {
     end
 
     if SteaSummonSave.waiting == nil then
+      db("wait list empty on load")
       SteaSummonSave.waiting = {}
       SteaSummonSave.timeStamp = 0
       SteaSummonSave.waitingKeepTime = 5
@@ -90,8 +91,9 @@ settings = {
   end,
 
   saveOnLogout = function(self, event, ...)
-    --- timestamp the list
+    --- timestamp and the list
     SteaSummonSave.timeStamp = GetTime()
+    SteaSummonSave.waiting = addonData.summon.waiting -- can get displaced if list is unmarshalled
   end,
 
   findSummonWord = function(_, phrase)
