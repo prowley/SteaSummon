@@ -167,7 +167,7 @@ local raid = {
           end
         end
       end
-      SummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
+      SteaSummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
       --[[----------------
             EXPERIMENTAL
       --------------------]]

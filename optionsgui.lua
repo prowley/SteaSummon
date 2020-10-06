@@ -107,7 +107,7 @@ optionsgui = {
             width = "normal",
             set = function(_, val)
               SteaSummonSave.windowSize = val
-              SummonFrame:SetScale(val)
+              SteaSummonFrame:SetScale(val)
             end,
             get = function()
               return SteaSummonSave.windowSize
@@ -127,7 +127,7 @@ optionsgui = {
             width = "normal",
             set = function(_, val)
               SteaSummonSave.listSize = val
-              ButtonFrame:SetScale(val)
+              SteaSummonButtonFrame:SetScale(val)
             end,
             get = function()
               return SteaSummonSave.listSize

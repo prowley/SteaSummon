@@ -1,7 +1,8 @@
 -- comms for the addon network
 -- CHAT_MSG_ADDON
 
-local _, addonData = ...
+local addonName, addonData = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 -- protocol
 -----------
@@ -18,31 +19,17 @@ local _, addonData = ...
 -- atD player at destination
 -- retire retire from network
 -- edone election result
-
--- leader/network management
-----------------------------
--- 1. On first raidJoin, request network list
--- 2. if within 5 seconds a network list is received, request initialize from leader
--- 3. if not received, you are the first one on the list and network leader
--- 4. if while waiting for network list, you receive a request for the network list,
-    -- whisper election and add the requester to a temp list,
--- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
--- 4b. upon becoming leader, whisper network list to the temp list
--- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
--- 6. upon receipt of a request for network list, add requester to list
--- 6a. if network leader, whisper network list
--- 8. when someone goes offline or leaves raid that is in the list, remove their name, you may become leader
--- 9. if comms setting turned on, and in group, goto 1
---10. if comms setting turned off, and in group, send withdrawing
+-- v old version
+-- version SteaSummon version Broadcast
 
 local DEFAULT_NETLIST_TIME = 5
+
 
 local gossip = {
   channel = "SteaSummon",
   netlistTimer = nil,
   tmpOps = {},
   netList = {},
-  tmpList = {},
   inInit = true,
   postInit = false,
   atDest = {},
@@ -50,6 +37,12 @@ local gossip = {
   atDestTimer = nil,
   me = nil,
   recvElections = 0,
+  votes = 0,
+  version = nil, -- the net protocol version
+  versionBad = false,
+  votingBooth = {},
+  SSversion = 0,
+  SSversion_notified = false,
 
   ---------------------------------
   init = function(self)
@@ -58,6 +51,9 @@ local gossip = {
     self:RegisterComm(self.channel, "callback")
     -- RegisterComm never returns anything, not good imo
     self.me, _ = UnitName("player")
+    self.votes = UnitGUID("player")
+    self.version = GetAddOnMetadata(addonName, "x-SteaSummon-Protocol-version")
+    self.SSversion = tonumber(GetAddOnMetadata(addonName, "Version"))
   end,
 
   ---------------------------------
@@ -90,23 +86,36 @@ local gossip = {
     if self.inInit then
       db("gossip", "TIMED OUT waiting for netlist")
       self.inInit = false
-      -- 4a. the temp list is destroyed if a network list is received, or used as network list if become leader
-      self.netList = self.tmpList
-      if self.recvElections > 0 then
-        self:SendCommMessage(self.channel, "edone", self:groupText())
-      end
-      -- 4b. upon becoming leader, whisper network list to the temp list
-      for i,v in pairs(self.netList) do
-        if i ~= 1 then -- skip ourselves
-          self:netListSend(v)
-        end
+      db("gossip", ">> election over >>")
+      self:SendCommMessage(self.channel, "edone", self:groupText(), "ALERT")
+      self:createNetList()
+      if self.netList[1] ~= self.me then
+        -- give them some time to realise they are leader
+        C_Timer.After(0.25, self.initialize)
       end
     end
   end,
 
   ---------------------------------
+  createNetList = function(self)
+    table.sort(self.votingBooth)
+    for i,v in pairs(self.votingBooth) do
+      local _, _, _, _, _, name = GetPlayerInfoByGUID(v)
+      db("gossip", "netlist:", name)
+      if not addonData.util:isInTable(self.netList, name) then
+        table.insert(self.netList, name)
+      end
+    end
+  end,
+
+  ---------------------------------
+  noComms = function(self)
+    return self.versionBad or not addonData.settings:useUpdates()
+  end,
+
+  ---------------------------------
   netListSend = function(self, player)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -117,19 +126,21 @@ local gossip = {
 
   ---------------------------------
   raidJoined = function(self)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
     db("gossip", "group joined")
-    if self.inInit then
+    if self.inInit and not self.versionBad then
       -- 1. On first raidJoin, request network list
       db("gossip", ">> netreq >>", self:groupText())
-      self:SendCommMessage(self.channel, "netreq", self:groupText())
+      self:SendCommMessage(self.channel, "netreq ".. self.votes.. "+"
+          .. self.version, self:groupText(), "ALERT")
       -- 3. if not received, you are the first one on the list and network leader
-      table.insert(self.tmpList, 1, self.me)
+      table.insert(self.votingBooth, 1, self.votes)
       self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME, self.netListTimeout)
     end
+    self:SteaSummonVersion()
   end,
 
   ---------------------------------
@@ -148,7 +159,7 @@ local gossip = {
 
   ---------------------------------
   raiderLeft = function(self, player)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -160,32 +171,37 @@ local gossip = {
         break
       end
     end
-    for i,v in pairs(self.tmpList) do
-      if v == player then
-        db("gossip", player, "left net group")
-        table.remove(self.tmpList, i)
-        break
+
+    if self.inInit then
+      for i,v in pairs(self.votingBooth) do
+        local _, _, _, _, _, name = GetPlayerInfoByGUID(v)
+        if name == player then
+          db("gossip", player, "left net group")
+          table.remove(self.votingBooth, i)
+          break
+        end
       end
     end
+
     self.atDest[player] = nil
   end,
 
   ---------------------------------
   raidLeft = function(self)
     db("gossip", "You left net group")
-    if self.inInit and not self.netlistTimer:isCancelled() then
+    if self.inInit then
       self.netlistTimer:Cancel()
     end
     self.recvElections = 0
     self.inInit = true
     wipe(self.netList)
-    self.tmpList = {}
+    self.votingBooth = {}
     wipe(self.atDest)
   end,
 
   ---------------------------------
   isLeader = function(self)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return true
     end
 
@@ -203,14 +219,17 @@ local gossip = {
       if idx then
         if addonData.summon:recStatus(addonData.summon.waiting[idx]) ~= status then
           addonData.summon:recStatus(addonData.summon.waiting[idx], status)
-          if not addonData.settings:useUpdates() then
+          if self:noComms() then
             return
           end
           db("gossip", ">> status >> ", self:groupText(), player, status)
-          self:SendCommMessage(self.channel, "s " .. tostring(idx) .. "+" .. status, self:groupText())
+          self:SendCommMessage(self.channel, "s " .. player .. "+" .. status, self:groupText())
         end
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> status >> WHISPER", player, status)
       self:SendCommMessage(self.channel, "s " .. player .. "+" .. status, "WHISPER", self.netList[1])
     end
@@ -223,13 +242,16 @@ local gossip = {
     if self:isLeader() then
       if addonData.summon:findWaitingPlayerIdx(player) then
         addonData.summon:arrived(player)
-        if not addonData.settings:useUpdates() then
+        if self:noComms() then
           return
         end
         db("gossip", ">> arrived >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "a " .. player, self:groupText())
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> arrived >> WHISPER", player)
       self:SendCommMessage(self.channel, "a " .. player, "WHISPER", self.netList[1])
     end
@@ -242,10 +264,12 @@ local gossip = {
     if self:isLeader() then
       local index = addonData.summon:findWaitingPlayerIdx(player)
       if not index then
-        local idx = addonData.summon:addWaiting(player)
-        if not addonData.settings:useUpdates() then
+        addonData.summon:addWaiting(player)
+        if self:noComms() then
           return
         end
+        local idx = addonData.summon:findWaitingPlayerIdx(player)
+        print(idx)
         local rec = addonData.summon:recMarshal(addonData.summon.waiting[idx])
         db("gossip", ">> adrec >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "adrec " .. tostring(idx) .. "_" .. rec, self:groupText())
@@ -254,6 +278,9 @@ local gossip = {
         self:status(player, "requested")
       end
     else
+      if self:noComms() then
+        return
+      end
       if isWhisper then
         db("gossip", ">> add >> WHISPER", player)
         self:SendCommMessage(self.channel, "ad " .. player, "WHISPER", self.netList[1])
@@ -272,7 +299,7 @@ local gossip = {
       if not noSet then
         addonData.summon:setDestination(zone,location)
       end
-      if not addonData.settings:useUpdates() then
+      if self:noComms() then
         return
       end
 
@@ -281,6 +308,9 @@ local gossip = {
       end
       self:SendCommMessage(self.channel, "d " .. destination, self:groupText())
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> destination >> WHISPER", destination)
       self:SendCommMessage(self.channel, "d " .. destination, "WHISPER", self.netList[1])
     end
@@ -302,7 +332,7 @@ local gossip = {
           self.atDestCount = self.atDestCount - 1
         end
 
-        if not addonData.settings:useUpdates() then
+        if self:noComms() then
           if self.atDestCount == 0 then
             self:destination("", "") -- you have moved on
           end
@@ -321,6 +351,9 @@ local gossip = {
         end
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> atDestination >> WHISPER", self.netList[1])
       self:SendCommMessage(self.channel, "atD " .. self.me .. "+" .. tostring(at), "WHISPER", self.netList[1])
     end
@@ -338,7 +371,10 @@ local gossip = {
 
   ---------------------------------
   initialize = function(self)
-    if not addonData.settings:useUpdates() then
+    if self == nil then
+      self = addonData.gossip
+    end
+    if self:noComms() then
       return
     end
 
@@ -353,12 +389,30 @@ local gossip = {
   end,
 
   ---------------------------------
+  SteaSummonVersion = function(self, to)
+    if self:noComms() then
+      return
+    end
+    if to then
+      db("gossip", ">> version >> Informing", to, "they have an old version")
+      self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "WHISPER", to)
+    else
+      db("gossip", ">> requesting version >>")
+      if IsInRaid() then
+        self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "RAID")
+      else
+        self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "GUILD")
+      end
+    end
+  end,
+
+  ---------------------------------
   callback = function(self, prefix, msg, dist, sender, ... )
     if prefix ~= self.channel then
       return
     end
     --db("gossip.event", "prefix:", prefix, "msg:", msg, "dist:", dist, "sender:", sender, ...)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     else
       if sender ~= self.me then
@@ -383,22 +437,21 @@ local gossip = {
         addonData.summon:arrived(subcmd)
       end
 
-    --- add player
+      --- add player
     elseif cmd == "ad" then
       db("gossip", "<< add <<", subcmd)
       if self:isLeader() then
         self:add(subcmd)
       end
 
-    --- add record
+      --- add record
     elseif cmd == "adrec" then
       local i, rec = strsplit("_", subcmd)
       db("gossip", "<< add record <<", rec)
-      table.insert(addonData.summon.waiting, tonumber(i), addonData.summon:recUnMarshal(rec))
-      addonData.summon.numwaiting = addonData.summon.numwaiting + 1
+      addonData.summon:recAdd(addonData.summon:recUnMarshal(rec), tonumber(i))
       addonData.summon:showSummons()
 
-    --- initialize
+      --- initialize
     elseif cmd == "i" then
       -- initialize requestor, if deputy init leader when they /reload
       if self:isLeader() or (self.netList[1] == sender and self.netList[2] == self.me) then
@@ -408,30 +461,20 @@ local gossip = {
           local dl = addonData.util:tableToMultiLine(self.atDest)
           db("gossip", ">> initialize reply >>", data)
           -- first send the dest list
-          self:SendCommMessage(self.channel, "dl " .. dl, "WHISPER", sender)
+          self:SendCommMessage(self.channel, "dl " .. dl, "WHISPER", sender, "BULK")
           -- then set their destination
           self:destination(addonData.summon.zone, addonData.summon.location)
           -- next waiting list
-          self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender)
+          self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender, "BULK")
         end
       end
 
-    --- leave netgroup (turned off comms)
+      --- leave netgroup (turned off comms or had a bad version)
     elseif cmd == "retire" then
       db("gossip", "<< retire <<", sender)
-      local idx
+      self:raiderLeft(sender)
 
-      for i, v in pairs(self.netList) do
-        if v == sender then
-          idx = i
-        end
-      end
-
-      if idx then
-        table.remove(self.netList, idx)
-      end
-
-    --- destination list
+      --- destination list
     elseif cmd == "dl" then
       db("gossip", "<< at destination list <<")
       self.atDest = addonData.util:multiLineToMap(subcmd)
@@ -440,7 +483,7 @@ local gossip = {
       db("gossip", "<< waiting list <<", subcmd)
       addonData.util:unmarshalWaitingTable(subcmd)
 
-    --- destination change
+      --- destination change
     elseif cmd == "d" then
       local destination = string.gsub(subcmd, "_", " ")
       local zone, location = strsplit("+", destination)
@@ -453,7 +496,7 @@ local gossip = {
         self:destination(zone, location, true)
       end
 
-    --- player at destination
+      --- player at destination
     elseif cmd == "atD" then
       local player, at = strsplit("+", subcmd)
       at = at == "true"
@@ -483,17 +526,17 @@ local gossip = {
         self:atDestination(at, player)
       end
 
-    --- status change
+      --- status change
     elseif cmd == "s" then
       local player, status = strsplit("+", subcmd)
       db("gossip", "<< status <<", sender, player, status)
       if self:isLeader() then
         self:status(player, status)
       else
-        addonData.summon:recStatus(addonData.summon.waiting[tonumber(player)], status)
+        addonData.summon:status(player, status)
       end
 
-    --- netgroup list
+      --- netgroup list
     elseif cmd == "netlist" then
       db("gossip", "<< netlist <<")
       self.netList = addonData.util:multiLineToTable(subcmd)
@@ -504,15 +547,40 @@ local gossip = {
         self:initialize()
       end
 
-    --- request for netgroup list
+      --- denied - on old version
+    elseif cmd == "v" then
+      db("gossip", "<< Bad Version <<")
+      cprint(L["version"])
+      self:netOn(false)
+      self.versionBad = true
+
+      --- request for netgroup list
     elseif cmd == "netreq" then
       db("gossip", "<< netreq <<")
       -- 4. if while waiting for network list, you receive a request for the network list,
       -- whisper election and add the requester to a temp list,
+      local votes, version = strsplit("+", subcmd)
+
+      -- deny old protocol versions
+      if version == nil or tonumber(version) < tonumber(self.version) then
+        db("gossip", ">> Bad Version >>")
+        db("gossip", "My version:", self.version, "sender", sender, "version:", version)
+        self:SendCommMessage(self.channel, "v " .. self.version , "WHISPER", sender)
+        return
+      elseif version ~= nil and tonumber(version) > tonumber(self.version) then
+        db("gossip", "My version:", self.version, "sender", sender, "version:", version)
+        cprint(L["version"])
+        self:netOn(false)
+        self.versionBad = true
+        return
+      end
+
       if self.inInit then
-        table.insert(self.tmpList, sender)
-        db("gossip", ">> election >>")
-        self:SendCommMessage(self.channel, "e", "WHISPER", sender)
+        if not addonData.util:isInTable(self.votingBooth, votes) then
+          table.insert(self.votingBooth, votes)
+        end
+        db("gossip", ">> election >>", sender)
+        self:SendCommMessage(self.channel, "e " .. self.votes, "WHISPER", sender, "ALERT")
       else
         -- 6. upon receipt of a request for network list, add requester to list
         local inTable = addonData.util:isInTable(self.netList, sender)
@@ -526,29 +594,40 @@ local gossip = {
         end
       end
 
-    --- notification of election, sender in init
+      --- notification of election, sender in init
     elseif cmd == "e" then
       db("gossip", "<< election <<")
-      -- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
+      -- 5. if you ask for a network list and receive "election", add GUID to voting
       if self.inInit then
-        if not addonData.util:isInTable(self.netList, sender) then
-          db("gossip", "election in progress, waiting some more")
-          self.recvElections = self.recvElections + 1
-          self.netlistTimer:Cancel()
-          self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME + self.recvElections + math.random(5), self.netListTimeout)
-        else
-          db("gossip", "election in progress, but I was first, not extending waiting time")
+        if not addonData.util:isInTable(self.votingBooth, subcmd) then
+          table.insert(self.votingBooth, subcmd)
         end
       else
         db("gossip", "election in progress reported, but I am already out of the init phase, ignoring")
       end
 
-    --- election over, someone is leader
+      --- election over, create net list
     elseif cmd == "edone" then
-      db("gossip", "<< election over <<")
-      self.inInit = false
-      self.postInit = true
-      self.netlistTimer:Cancel()
+      if self.inInit then
+        db("gossip", "<< election over <<", sender)
+        self.inInit = false
+        self.postInit = true
+        self.netlistTimer:Cancel()
+        self:createNetList()
+      end
+
+      --- SteaSummon version broadcast GUILD
+    elseif cmd=="version" then
+      db("gossip", "<< version <<", sender)
+      local reported_version = tonumber(subcmd)
+      if reported_version < self.SSversion then
+        self:SteaSummonVersion(sender)
+      end
+      if not self.SSversion_notified and reported_version > self.SSversion then
+        db("gossip", "I have an old version <<")
+        self.SSversion_notified = true
+        cprint(L["There is a newer version available."])
+      end
     end
   end
 }
