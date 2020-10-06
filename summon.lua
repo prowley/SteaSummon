@@ -17,6 +17,7 @@ local summon = {
   infoSend = false,
   me = "",
   dirty = true, -- waiting list changed flag, to begin we want to show load list so default dirty
+  postInit = false,
 
   ---------------------------------
   init = function(self)
@@ -31,12 +32,24 @@ local summon = {
     self.me, _ = UnitName("player")
     self.me = strsplit("-", self.me)
 
-    local ts = GetTime()
+    self.waiting = SteaSummonSave.waiting
+    self.numwaiting = #self.waiting
+    self.postInit = true
+  end,
+
+  ---------------------------------
+  postInitSetup = function(self)
+    if not self.postInit then
+      return
+    end
+    self.postInit = false
 
     -- sanity debug
     for i,v in pairs(SteaSummonSave.waiting) do
       db("waitlist", i, v)
     end
+
+    local ts = GetTime()
 
     if not IsInGroup(LE_PARTY_CATEGORY_HOME)
         or SteaSummonSave.waitingKeepTime == 0
@@ -44,11 +57,8 @@ local summon = {
       db("wiping wait list")
       db("saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
-      wipe(SteaSummonSave.waiting)
+      wipe(self.waiting)
     end
-
-    self.waiting = SteaSummonSave.waiting
-    self.numwaiting = #self.waiting
   end,
 
   ---------------------------------

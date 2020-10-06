@@ -34,6 +34,7 @@ local raid = {
     db("raid.event", event, ...)
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
+      addonData.summon:postInitSetup()
       addonData.raid:updateRaid()
     end
 
