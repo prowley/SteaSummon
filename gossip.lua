@@ -189,6 +189,8 @@ local gossip = {
       return true
     end
 
+    self:offlineCheck() -- we may have become the leader
+
     return self.netList[1] == self.me
   end,
 
@@ -371,6 +373,7 @@ local gossip = {
 
     db ("gossip.event", "message", cmd, "from", sender, "payload:", subcmd)
 
+    --- arrive
     if cmd == "a" then
       db("gossip", "<< arrived <<", subcmd)
 
@@ -380,12 +383,14 @@ local gossip = {
         addonData.summon:arrived(subcmd)
       end
 
+    --- add player
     elseif cmd == "ad" then
       db("gossip", "<< add <<", subcmd)
       if self:isLeader() then
         self:add(subcmd)
       end
 
+    --- add record
     elseif cmd == "adrec" then
       local i, rec = strsplit("_", subcmd)
       db("gossip", "<< add record <<", rec)
@@ -393,6 +398,7 @@ local gossip = {
       addonData.summon.numwaiting = addonData.summon.numwaiting + 1
       addonData.summon:showSummons()
 
+    --- initialize
     elseif cmd == "i" then
       -- initialize requestor, if deputy init leader when they /reload
       if self:isLeader() or (self.netList[1] == sender and self.netList[2] == self.me) then
@@ -403,13 +409,14 @@ local gossip = {
           db("gossip", ">> initialize reply >>", data)
           -- first send the dest list
           self:SendCommMessage(self.channel, "dl " .. dl, "WHISPER", sender)
-          -- next waiting list
-          self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender)
           -- then set their destination
           self:destination(addonData.summon.zone, addonData.summon.location)
+          -- next waiting list
+          self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender)
         end
       end
 
+    --- leave netgroup (turned off comms)
     elseif cmd == "retire" then
       db("gossip", "<< retire <<", sender)
       local idx
@@ -424,16 +431,16 @@ local gossip = {
         table.remove(self.netList, idx)
       end
 
+    --- destination list
     elseif cmd == "dl" then
       db("gossip", "<< at destination list <<")
       self.atDest = addonData.util:multiLineToMap(subcmd)
 
     elseif cmd == "l" then
       db("gossip", "<< waiting list <<", subcmd)
-      if sender == self.netList[1] then
-        addonData.util:unmarshalWaitingTable(subcmd)
-      end
+      addonData.util:unmarshalWaitingTable(subcmd)
 
+    --- destination change
     elseif cmd == "d" then
       local destination = string.gsub(subcmd, "_", " ")
       local zone, location = strsplit("+", destination)
@@ -446,6 +453,7 @@ local gossip = {
         self:destination(zone, location, true)
       end
 
+    --- player at destination
     elseif cmd == "atD" then
       local player, at = strsplit("+", subcmd)
       at = at == "true"
@@ -475,6 +483,7 @@ local gossip = {
         self:atDestination(at, player)
       end
 
+    --- status change
     elseif cmd == "s" then
       local player, status = strsplit("+", subcmd)
       db("gossip", "<< status <<", sender, player, status)
@@ -484,6 +493,7 @@ local gossip = {
         addonData.summon:recStatus(addonData.summon.waiting[tonumber(player)], status)
       end
 
+    --- netgroup list
     elseif cmd == "netlist" then
       db("gossip", "<< netlist <<")
       self.netList = addonData.util:multiLineToTable(subcmd)
@@ -494,6 +504,7 @@ local gossip = {
         self:initialize()
       end
 
+    --- request for netgroup list
     elseif cmd == "netreq" then
       db("gossip", "<< netreq <<")
       -- 4. if while waiting for network list, you receive a request for the network list,
@@ -515,6 +526,7 @@ local gossip = {
         end
       end
 
+    --- notification of election, sender in init
     elseif cmd == "e" then
       db("gossip", "<< election <<")
       -- 5. if you ask for a network list and receive "election", wait 5 seconds for the network list to arrive
@@ -531,6 +543,7 @@ local gossip = {
         db("gossip", "election in progress reported, but I am already out of the init phase, ignoring")
       end
 
+    --- election over, someone is leader
     elseif cmd == "edone" then
       db("gossip", "<< election over <<")
       self.inInit = false

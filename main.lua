@@ -6,8 +6,12 @@
 -- TODO: add type down search of list
 -- TODO: add fancy spell casting next button
 -- TODO: add sound when next button pops
--- TODO: L10N **** Prio
--- TODO: key bindings
+-- TODO: offline on alt support
+-- TODO: better offline, dead/ghost checks - dont need to enumerate raid for that, just the list
+-- TODO: raid lead/assist function
+-- TODO: nag for assist
+-- TODO: auto life tap, maybe eat/drink too?
+-- TODO: party/raid confirmation of add
 
 -- notes:
 --
@@ -16,7 +20,7 @@
 -- gold ring (minimap frame button): ../COMMON/BlueMenuRing.png
 -- gold ring (minimap looks closer): ../COMMON/RingBorder
 -- gold ring: ../COMMON/GoldRing
--- indicators (round): ../COMMON/inicator-(Red,Yellow,Gray,Green)
+-- indicators (round): ../COMMON/idnicator-(Red,Yellow,Gray,Green)
 -- button fram UI-Quickslot /-Depress
 -- sound: RAID_WARNING = 8959,
 

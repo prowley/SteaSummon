@@ -2,16 +2,22 @@
 
 local _, addonData = ...
 
+local LONG_TIME = 2
+local SHORT_TIME = 0.2
+local SECOND_TIME = 1
+
 local monitor = {
-  sec_t = {},
+  second_t = {},
+  short_t = {},
   long_t = {},
 
   init = function(self)
     addonData.debug:registerCategory("monitor")
-    self.sec_t = self:create(1, self.callback_sec)
-    self.long = self:create(2, self.callback_long)
+    self.short_t = self:create(SHORT_TIME, self.callback_short)
+    self.long_t = self:create(LONG_TIME, self.callback_long)
+    self.second_t = self:create(SECOND_TIME, self.callback_sec)
     self:start()
-    self.long:Play()
+    self.long_t:Play()
   end,
 
   create = function(_, i, callback, timerRepeat)
@@ -39,15 +45,21 @@ local monitor = {
   end,
 
   start = function(self)
-    self.sec_t:Play()
+    self.short_t:Play()
+    self.second_t:Play()
   end,
 
   stop = function(self)
-    self.sec_t:Stop()
+    self.short_t:Stop()
+    self.second_t:Stop()
+  end,
+
+  callback_short = function()
+    addonData.summon:tick()
   end,
 
   callback_sec = function()
-    addonData.summon:tick()
+    addonData.summon:timerSecondTick()
   end,
 
   callback_long = function()
