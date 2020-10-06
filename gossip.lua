@@ -2,6 +2,7 @@
 -- CHAT_MSG_ADDON
 
 local addonName, addonData = ...
+local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 -- protocol
 -----------
@@ -18,8 +19,8 @@ local addonName, addonData = ...
 -- atD player at destination
 -- retire retire from network
 -- edone election result
--- version old version
-
+-- v old version
+-- version SteaSummon version Broadcast
 
 local DEFAULT_NETLIST_TIME = 5
 
@@ -37,9 +38,11 @@ local gossip = {
   me = nil,
   recvElections = 0,
   votes = 0,
-  version = "", -- the net protocol version
+  version = nil, -- the net protocol version
   versionBad = false,
   votingBooth = {},
+  SSversion = 0,
+  SSversion_notified = false,
 
   ---------------------------------
   init = function(self)
@@ -50,6 +53,7 @@ local gossip = {
     self.me, _ = UnitName("player")
     self.votes = UnitGUID("player")
     self.version = GetAddOnMetadata(addonName, "x-SteaSummon-Protocol-version")
+    self.SSversion = tonumber(GetAddOnMetadata(addonName, "Version"))
   end,
 
   ---------------------------------
@@ -105,8 +109,13 @@ local gossip = {
   end,
 
   ---------------------------------
+  noComms = function(self)
+    return self.versionBad or not addonData.settings:useUpdates()
+  end,
+
+  ---------------------------------
   netListSend = function(self, player)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -117,7 +126,7 @@ local gossip = {
 
   ---------------------------------
   raidJoined = function(self)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -131,6 +140,7 @@ local gossip = {
       table.insert(self.votingBooth, 1, self.votes)
       self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME, self.netListTimeout)
     end
+    self:SteaSummonVersion()
   end,
 
   ---------------------------------
@@ -149,7 +159,7 @@ local gossip = {
 
   ---------------------------------
   raiderLeft = function(self, player)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -191,7 +201,7 @@ local gossip = {
 
   ---------------------------------
   isLeader = function(self)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return true
     end
 
@@ -209,7 +219,7 @@ local gossip = {
       if idx then
         if addonData.summon:recStatus(addonData.summon.waiting[idx]) ~= status then
           addonData.summon:recStatus(addonData.summon.waiting[idx], status)
-          if not addonData.settings:useUpdates() then
+          if self:noComms() then
             return
           end
           db("gossip", ">> status >> ", self:groupText(), player, status)
@@ -217,6 +227,9 @@ local gossip = {
         end
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> status >> WHISPER", player, status)
       self:SendCommMessage(self.channel, "s " .. player .. "+" .. status, "WHISPER", self.netList[1])
     end
@@ -229,13 +242,16 @@ local gossip = {
     if self:isLeader() then
       if addonData.summon:findWaitingPlayerIdx(player) then
         addonData.summon:arrived(player)
-        if not addonData.settings:useUpdates() then
+        if self:noComms() then
           return
         end
         db("gossip", ">> arrived >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "a " .. player, self:groupText())
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> arrived >> WHISPER", player)
       self:SendCommMessage(self.channel, "a " .. player, "WHISPER", self.netList[1])
     end
@@ -249,7 +265,7 @@ local gossip = {
       local index = addonData.summon:findWaitingPlayerIdx(player)
       if not index then
         addonData.summon:addWaiting(player)
-        if not addonData.settings:useUpdates() then
+        if self:noComms() then
           return
         end
         local idx = addonData.summon:findWaitingPlayerIdx(player)
@@ -262,6 +278,9 @@ local gossip = {
         self:status(player, "requested")
       end
     else
+      if self:noComms() then
+        return
+      end
       if isWhisper then
         db("gossip", ">> add >> WHISPER", player)
         self:SendCommMessage(self.channel, "ad " .. player, "WHISPER", self.netList[1])
@@ -280,7 +299,7 @@ local gossip = {
       if not noSet then
         addonData.summon:setDestination(zone,location)
       end
-      if not addonData.settings:useUpdates() then
+      if self:noComms() then
         return
       end
 
@@ -289,6 +308,9 @@ local gossip = {
       end
       self:SendCommMessage(self.channel, "d " .. destination, self:groupText())
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> destination >> WHISPER", destination)
       self:SendCommMessage(self.channel, "d " .. destination, "WHISPER", self.netList[1])
     end
@@ -310,7 +332,7 @@ local gossip = {
           self.atDestCount = self.atDestCount - 1
         end
 
-        if not addonData.settings:useUpdates() then
+        if self:noComms() then
           if self.atDestCount == 0 then
             self:destination("", "") -- you have moved on
           end
@@ -329,6 +351,9 @@ local gossip = {
         end
       end
     else
+      if self:noComms() then
+        return
+      end
       db("gossip", ">> atDestination >> WHISPER", self.netList[1])
       self:SendCommMessage(self.channel, "atD " .. self.me .. "+" .. tostring(at), "WHISPER", self.netList[1])
     end
@@ -349,7 +374,7 @@ local gossip = {
     if self == nil then
       self = addonData.gossip
     end
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     end
 
@@ -364,12 +389,30 @@ local gossip = {
   end,
 
   ---------------------------------
+  SteaSummonVersion = function(self, to)
+    if self:noComms() then
+      return
+    end
+    if to then
+      db("gossip", ">> version >> Informing", to, "they have an old version")
+      self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "WHISPER", to)
+    else
+      db("gossip", ">> requesting version >>")
+      if IsInRaid() then
+        self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "RAID")
+      else
+        self:SendCommMessage(self.channel, "version " .. tostring(self.SSversion), "GUILD")
+      end
+    end
+  end,
+
+  ---------------------------------
   callback = function(self, prefix, msg, dist, sender, ... )
     if prefix ~= self.channel then
       return
     end
     --db("gossip.event", "prefix:", prefix, "msg:", msg, "dist:", dist, "sender:", sender, ...)
-    if not addonData.settings:useUpdates() then
+    if self:noComms() then
       return
     else
       if sender ~= self.me then
@@ -426,20 +469,10 @@ local gossip = {
         end
       end
 
-      --- leave netgroup (turned off comms)
+      --- leave netgroup (turned off comms or had a bad version)
     elseif cmd == "retire" then
       db("gossip", "<< retire <<", sender)
-      local idx
-
-      for i, v in pairs(self.netList) do
-        if v == sender then
-          idx = i
-        end
-      end
-
-      if idx then
-        table.remove(self.netList, idx)
-      end
+      self:raiderLeft(sender)
 
       --- destination list
     elseif cmd == "dl" then
@@ -500,7 +533,7 @@ local gossip = {
       if self:isLeader() then
         self:status(player, status)
       else
-        addonData.summon:recStatus(player, status)
+        addonData.summon:status(player, status)
       end
 
       --- netgroup list
@@ -517,8 +550,9 @@ local gossip = {
       --- denied - on old version
     elseif cmd == "v" then
       db("gossip", "<< Bad Version <<")
-      self.versionBad = true
+      cprint(L["version"])
       self:netOn(false)
+      self.versionBad = true
 
       --- request for netgroup list
     elseif cmd == "netreq" then
@@ -528,9 +562,16 @@ local gossip = {
       local votes, version = strsplit("+", subcmd)
 
       -- deny old protocol versions
-      if version == nil or version ~= self.version then
+      if version == nil or tonumber(version) < tonumber(self.version) then
+        db("gossip", ">> Bad Version >>")
         db("gossip", "My version:", self.version, "sender", sender, "version:", version)
         self:SendCommMessage(self.channel, "v " .. self.version , "WHISPER", sender)
+        return
+      elseif version ~= nil and tonumber(version) > tonumber(self.version) then
+        db("gossip", "My version:", self.version, "sender", sender, "version:", version)
+        cprint(L["version"])
+        self:netOn(false)
+        self.versionBad = true
         return
       end
 
@@ -538,7 +579,7 @@ local gossip = {
         if not addonData.util:isInTable(self.votingBooth, votes) then
           table.insert(self.votingBooth, votes)
         end
-        db("gossip", ">> election >>")
+        db("gossip", ">> election >>", sender)
         self:SendCommMessage(self.channel, "e " .. self.votes, "WHISPER", sender, "ALERT")
       else
         -- 6. upon receipt of a request for network list, add requester to list
@@ -568,11 +609,24 @@ local gossip = {
       --- election over, create net list
     elseif cmd == "edone" then
       if self.inInit then
-        db("gossip", "<< election over <<")
+        db("gossip", "<< election over <<", sender)
         self.inInit = false
         self.postInit = true
         self.netlistTimer:Cancel()
         self:createNetList()
+      end
+
+      --- SteaSummon version broadcast GUILD
+    elseif cmd=="version" then
+      db("gossip", "<< version <<", sender)
+      local reported_version = tonumber(subcmd)
+      if reported_version < self.SSversion then
+        self:SteaSummonVersion(sender)
+      end
+      if not self.SSversion_notified and reported_version > self.SSversion then
+        db("gossip", "I have an old version <<")
+        self.SSversion_notified = true
+        cprint(L["There is a newer version available."])
       end
     end
   end

@@ -99,3 +99,7 @@ L["Use AddOn Broadcast Communications"] = true
 L["broadcastdesc"] = "Get and send summoning status updates. Gives you notifications of summon status changes, and helps to keep the summoning list alive through relogs. Makes the Next button more effective with multiple warlock summoners i.e. please don't turn this off."
 L["Version Details"] = true
 L["version: %v\nbuild: %b\ndate: %d\ntocversion: %t\n\nSteaSummon version %s"] = true
+
+-- gossip.lua
+L["There is a newer version available."] = true
+L["version"] = "Your version of SteaSummon has an old network protocol version. You really should update and restart your client now."

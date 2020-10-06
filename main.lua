@@ -46,7 +46,7 @@ end
 
 -- colored print to chat window
 function cprint(...)
-    print("|cf00fffff", addonName, ":|r ", ...)
+    print("|cf00fffff" .. addonName .. ":|r ", ...)
 end
 
 function tstring(str, patterns)

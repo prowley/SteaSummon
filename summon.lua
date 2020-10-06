@@ -68,6 +68,9 @@ local summon = {
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       wipe(self.waiting)
     end
+
+    -- good time for a version check
+    addonData.gossip:SteaSummonVersion()
   end,
 
   ---------------------------------
