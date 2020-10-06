@@ -1,4 +1,4 @@
 <Bindings>
   <Binding name="CLICK SteaSummonButton38:LeftButton" header="STEASUMMON" Category="ADDONS"/>
-  <Binding name="CLICK SummonToButton:LeftButton" Category="ADDONS"/>
+  <Binding name="CLICK SteaSummonToButton:LeftButton" Category="ADDONS"/>
 </Bindings>

@@ -32,7 +32,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- keybind stuff
 BINDING_HEADER_STEASUMMON = "SteaSummon"
 _G["BINDING_NAME_CLICK SteaSummonButton38:LeftButton"] = L["Summon Next"]
-_G["BINDING_NAME_CLICK SummonToButton:LeftButton"] = L["Set Destination"]
+_G["BINDING_NAME_CLICK SteaSummonToButton:LeftButton"] = L["Set Destination"]
 
 SteaSummon = {}
 
