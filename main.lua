@@ -4,14 +4,16 @@
 -- TODO: add raid instructions
 -- TODO: add more clickers nag
 -- TODO: add type down search of list
--- TODO: add fancy spell casting next button
 -- TODO: add sound when next button pops
 -- TODO: offline on alt support
--- TODO: better offline, dead/ghost checks - dont need to enumerate raid for that, just the list
 -- TODO: raid lead/assist function
 -- TODO: nag for assist
 -- TODO: auto life tap, maybe eat/drink too?
 -- TODO: party/raid confirmation of add
+--- Visual
+-- TODO: fancy highlights for new things
+-- TODO: add fancy spell casting next button
+
 
 -- notes:
 --
