@@ -18,6 +18,7 @@ local summon = {
   me = "",
   dirty = true, -- waiting list changed flag, to begin we want to show load list so default dirty
   postInit = false,
+  isCasting = false,
 
   ---------------------------------
   init = function(self)
@@ -91,9 +92,9 @@ local summon = {
   ---------------------------------
   waitRecord = function(self, player, time, status, prioReason)
     local rec
-    rec = {player, time, status, prioReason}
+    rec = {player, time, status, prioReason, true}
     db("summon.waitlist.record","Created record {",
-        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), "}")
+        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true, "}")
 
     return rec
   end,
@@ -166,6 +167,16 @@ local summon = {
       rec[4] = val
     end
     return rec[4]
+  end,
+
+  ---------------------------------
+  recNew = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record new value:", val)
+      rec[5] = val
+    end
+    return rec[5]
   end,
 
   ---------------------------------
@@ -443,7 +454,8 @@ local summon = {
       sf:SetScale(0.5)
 
       addonData.buttonFrame = CreateFrame("Frame", "SteaSummonButtonFrame", SteaSummonFrame)
-      addonData.buttonFrame:SetSize(sf:GetSize())
+      local x, y = sf:GetSize()
+      addonData.buttonFrame:SetSize(x-10, y)
       addonData.buttonFrame:SetScale(SteaSummonSave.listSize)
       sf:SetScrollChild(addonData.buttonFrame)
 
@@ -567,6 +579,7 @@ local summon = {
       local player
       local summonClick
       local cancelClick
+      local r,g,b,_ = 0.5, 0.5, 0.5
 
       if self.waiting[i] ~= nil then
         player = self:recPlayer(self.waiting[i])
@@ -580,30 +593,37 @@ local summon = {
           addonData.buttons[i].Button:SetAttribute("macrotext", "")
           addonData.buttons[i].Button:SetScript("OnMouseUp", nil)
         elseif self:listDirty() then
-          addonData.buttons[i].Button:SetEnabled(true)
-          _, class = UnitClass(player)
+          local _, class = UnitClass(player)
           r,g,b,_ = GetClassColor(class)
+          addonData.buttons[i].Button:SetEnabled(true)
           addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
           if (addonData.util:playerCanSummon()) then
             local spell = GetSpellInfo(698) -- Ritual of Summoning
-            addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            if not self.isCasting then
+              addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            else
+              addonData.buttons[i].Button:SetAttribute("macrotext", "")
+            end
           end
           local z,l = self:getCurrentLocation()
 
           if (addonData.util:playerCanSummon()) then
             summonClick = function(_, button)
               if button == nil or button == "LeftButton" then
-                if UnitPower("player") >= 300 then
-                  db("summon.display","summoning ", player)
-                  addonData.gossip:status(player, L["pending"])
-                  addonData.chat:raid(SteaSummonSave.raidchat, player)
-                  addonData.chat:say(SteaSummonSave.saychat, player)
-                  addonData.chat:whisper(SteaSummonSave.whisperchat, player)
-                  self.summoningPlayer = player
-                  addonData.gossip:destination(z, l)
-                  self.hasSummoned = true
-                else
-                  addonData.chat:whisper(L["Imagine not having enough mana."], self.me)
+                if not self.isCasting then
+                  if UnitPower("player") >= 300 then
+                    self.isCasting = true
+                    db("summon.display","summoning ", player)
+                    addonData.gossip:status(player, L["pending"])
+                    addonData.chat:raid(SteaSummonSave.raidchat, player)
+                    addonData.chat:say(SteaSummonSave.saychat, player)
+                    addonData.chat:whisper(SteaSummonSave.whisperchat, player)
+                    self.summoningPlayer = player
+                    addonData.gossip:destination(z, l)
+                    self.hasSummoned = true
+                  else
+                    addonData.chat:whisper(L["Imagine not having enough mana."], self.me)
+                  end
                 end
               end
             end
@@ -616,6 +636,13 @@ local summon = {
 
       if self:listDirty() then
         -- skip the rest of the visual updates
+
+        --- flare size
+        addonData.buttons[i].flare:SetBackdrop( {
+          bgFile = "Interface\\TradeFrame\\UI-TradeFrame-Highlight",
+          tile = true, tileSize = SteaSummonButtonFrame:GetWidth(),
+          edgeSize = 15, insets = { left = 1, right = 1, top = 1, bottom = 1 }
+        });
 
         --- Cancel Button
         -- Can cancel from own UI
@@ -634,8 +661,12 @@ local summon = {
           --- Next Button
           if not next and self:recStatus(self.waiting[i]) == L["requested"] and addonData.util:playerCanSummon() then
             next = true
-            local spell = GetSpellInfo(698) -- Ritual of Summoning
-            addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            if not self.isCasting then
+              local spell = GetSpellInfo(698) -- Ritual of Summoning
+              addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            else
+              addonData.buttons[38].Button:SetAttribute("macrotext", "")
+            end
             addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
             addonData.buttons[38].Button:Show()
           end
@@ -656,6 +687,12 @@ local summon = {
 
           --- Status
           addonData.buttons[i].Status["FS"]:SetText(self:recStatus(self.waiting[i]))
+
+          --- New flare
+          if self:recNew(self.waiting[i]) then
+            addonData.buttons[i].flare.ag:Play()
+            self:recNew(self.waiting[i],false)
+          end
         end
 
         if not next then
@@ -773,6 +810,33 @@ local summon = {
     addonData.buttons[i].Button:SetAttribute("macrotext", "")
 
     if i < 38 then -- last button we use for next summon, so don't want these
+      --- flare
+      addonData.buttons[i].flare = CreateFrame("Frame", "SteaSummonFlare"..i, parent)
+      addonData.buttons[i].flare:SetHeight(bh + hpad)
+      addonData.buttons[i].flare:SetPoint("TOPLEFT","SteaSummonButtonFrame","TOPLEFT", 2,-((i-1)*(bh)+(hpad/2)))
+      --addonData.buttons[i].flare:SetPoint("TOPRIGHT","SteaSummonButtonFrame","TOPRIGHT", 0,-(((i-1)*bh)+(hpad/2)))
+      addonData.buttons[i].flare:SetWidth(320)
+      addonData.buttons[i].flare.tex = addonData.buttons[i].flare:CreateTexture(nil, "BACKGROUND")
+      addonData.buttons[i].flare.tex:SetAllPoints()
+      addonData.buttons[i].flare.tex:SetColorTexture(1, 1, 1, 1)
+      addonData.buttons[i].flare.tex:SetBlendMode("MOD")
+      addonData.buttons[i].flare:SetAlpha(0)
+      addonData.buttons[i].flare.ag = addonData.buttons[i].flare:CreateAnimationGroup()
+      addonData.buttons[i].flare.ag.anim = addonData.buttons[i].flare.ag:CreateAnimation("Alpha")
+      addonData.buttons[i].flare.ag.anim:SetFromAlpha(0.5)
+      addonData.buttons[i].flare.ag.anim:SetToAlpha(1)
+      addonData.buttons[i].flare.ag.anim:SetDuration(0.1)
+      addonData.buttons[i].flare.ag.anim:SetSmoothing("IN")
+      addonData.buttons[i].flare.ag.anim:SetOrder(1)
+      addonData.buttons[i].flare.ag.anim2 = addonData.buttons[i].flare.ag:CreateAnimation("Alpha")
+      addonData.buttons[i].flare.ag.anim2:SetFromAlpha(0.9)
+      addonData.buttons[i].flare.ag.anim2:SetToAlpha(0)
+      addonData.buttons[i].flare.ag.anim2:SetDuration(1)
+      addonData.buttons[i].flare.ag.anim2:SetSmoothing("OUT")
+      addonData.buttons[i].flare.ag.anim2:SetOrder(2)
+      --addonData.buttons[i].flare.ag:SetScript("OnFinished", function() addonData.buttons[i].flare.ag:Stop() end)
+      addonData.buttons[i].flare:Show()
+
       --- Cancel
       addonData.buttons[i].Cancel = CreateFrame("Button", "SteaSummonCancelButton"..i,
           parent, "UIPanelCloseButtonNoScripts")
@@ -990,12 +1054,14 @@ local summon = {
   summonFail = function(self)
     db("summon.waitlist", "something went wrong, resetting status of " .. self.summoningPlayer .. " to requested")
     addonData.gossip:status(self.summoningPlayer, L["requested"])
+    self.isCasting = false
   end,
 
   ---------------------------------
   summonSuccess = function(self)
     db("summon.waitlist", "summon succeeded, setting status of " .. self.summoningPlayer .. " to summoned")
     addonData.gossip:status(self.summoningPlayer, L["summoned"])
+    self.isCasting = false
   end,
 
   offline = function(self, player)
