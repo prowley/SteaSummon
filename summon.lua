@@ -66,11 +66,18 @@ local summon = {
       db("wiping wait list")
       db("saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
-      wipe(self.waiting)
+      self:listClear()
     end
 
     -- good time for a version check
     addonData.gossip:SteaSummonVersion()
+  end,
+
+  ---------------------------------
+  listClear = function(self)
+    wipe(self.waiting)
+    self.numwaiting = 0
+    self:listDirty(true)
   end,
 
   ---------------------------------
@@ -101,8 +108,16 @@ local summon = {
 
   ---------------------------------
   recUnMarshal = function(self, data)
-    local player, time, status, prio = strsplit("+", data)
-    return self:waitRecord(player, time, status, prio)
+    if data then
+      local player, time, status, prio = strsplit("+", data)
+      if player and time and status and prio then
+        return self:waitRecord(player, time, status, prio)
+      else
+        db("summon.waitlist.record", "unmarshalled data contains nil", player, time, status, prio)
+      end
+    else
+      db("summon.waitlist.record", "tried to unmarshal nil")
+    end
   end,
 
   ---------------------------------
@@ -949,7 +964,7 @@ local summon = {
   ---------------------------------
   summoned = function(self, player)
     -- update status
-    waitEntry = self:findWaitingPlayer(player)
+    local waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
       db("summon.waitlist", "a summon is pending for " .. player)
       self:recStatus(waitEntry, L["pending"])
@@ -959,7 +974,7 @@ local summon = {
   ---------------------------------
   status = function(self, player, status)
     -- update status
-    waitEntry = self:findWaitingPlayer(player)
+    local waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
       db("summon.waitlist", "status changed to", status, "for", player)
       self:recStatus(waitEntry, status)
@@ -1035,7 +1050,9 @@ local summon = {
   callback = function(_, event, ...)
     if event == "PLAYER_REGEN_DISABLED" then
       -- entered combat, stop everything or bad things happen
-      SteaSummonFrame:Hide()
+      if SteaSummonFrame then
+        SteaSummonFrame:Hide()
+      end
     end
     if event == "PLAYER_REGEN_ENABLED" then
       -- start things up again, nothing to do
@@ -1053,19 +1070,23 @@ local summon = {
     self.myZone, self.myLocation = GetZoneText(), GetMinimapZoneText()
 
     if self:isAtDestination() then
-      SteaSummonFrame.destination:SetTextColor(0,1,0,.5)
-      SteaSummonFrame.location:SetTextColor(0,1,0,.5)
+      if SteaSummonFrame then
+        SteaSummonFrame.destination:SetTextColor(0,1,0,.5)
+        SteaSummonFrame.location:SetTextColor(0,1,0,.5)
+      end
       if SteaSummonToButton then
         self.infoSend = true
         SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
       end
 
-      if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location
+      if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location to destination
         addonData.gossip:atDestination(true)
       end
     else
-      SteaSummonFrame.destination:SetTextColor(1,1,1,.5)
-      SteaSummonFrame.location:SetTextColor(0,1,0,.5)
+      if SteaSummonFrame then
+        SteaSummonFrame.destination:SetTextColor(1,1,1,.5)
+        SteaSummonFrame.location:SetTextColor(0,1,0,.5)
+      end
       if SteaSummonToButton then
         SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
       end
@@ -1079,10 +1100,12 @@ local summon = {
       end
     end
 
-    local pat = {["%%zone"] = self.myZone, ["%%subzone"] = self.myLocation}
-    local s = L["Location: %subzone, %zone"]
-    s = tstring(s, pat)
-    SteaSummonFrame.location:SetText(s)
+    if SteaSummonFrame and oldZone ~= self.myZone or oldLocation ~= self.myLocation then
+      local pat = {["%%zone"] = self.myZone, ["%%subzone"] = self.myLocation}
+      local s = L["Location: %subzone, %zone"]
+      s = tstring(s, pat)
+      SteaSummonFrame.location:SetText(s)
+    end
   end,
 
   ---------------------------------
@@ -1091,15 +1114,20 @@ local summon = {
       db("summon.misc", "bad inputs to setDestination", zone, location)
       return
     end
+    if self.zone == zone and self.location == location then
+      return
+    end
     self.location = location
     self.zone = zone
 
     db("summon.misc", "setting destination: ", location, " in ", zone)
     if location and location ~= "" and zone and zone ~= "" then
-      local pat = {["%%zone"] = self.zone, ["%%subzone"] = self.location}
-      local s = L["Destination: %subzone, %zone"]
-      s = tstring(s, pat)
-      SteaSummonFrame.destination:SetText(s)
+      if SteaSummonFrame then
+        local pat = {["%%zone"] = self.zone, ["%%subzone"] = self.location}
+        local s = L["Destination: %subzone, %zone"]
+        s = tstring(s, pat)
+        SteaSummonFrame.destination:SetText(s)
+      end
       if self:isAtDestination() then
         if SteaSummonToButton then
           self.infoSend = true
@@ -1108,7 +1136,9 @@ local summon = {
         addonData.gossip:atDestination(true)
       end
     else
-      SteaSummonFrame.destination:SetText("")
+      if SteaSummonFrame then
+        SteaSummonFrame.destination:SetText("")
+      end
     end
   end,
 

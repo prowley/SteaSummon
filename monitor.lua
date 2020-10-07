@@ -3,7 +3,7 @@
 local _, addonData = ...
 
 local LONG_TIME = 2
-local SHORT_TIME = 0.2
+local SHORT_TIME = 0.5
 local SECOND_TIME = 1
 
 local monitor = {
