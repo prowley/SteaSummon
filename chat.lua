@@ -105,7 +105,7 @@ local chat = {
 
   sendChat = function(_, msg, channel, channel2, to)
     db("chat", "sendChat ", msg, " ", channel, " ", to)
-    if msg ~= nil and ms ~= "" then
+    if msg ~= nil and msg ~= "" then
       -- substitute variables in message
       local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
       msg = tstring(msg, patterns)
