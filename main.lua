@@ -10,6 +10,8 @@
 -- TODO: nag for assist
 -- TODO: auto life tap, maybe eat/drink too?
 -- TODO: party/raid confirmation of add
+-- TODO: location based summon phrases
+
 --- Visual
 -- TODO: fancy highlights for new things
 -- TODO: add fancy spell casting next button
