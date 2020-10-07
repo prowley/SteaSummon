@@ -34,11 +34,11 @@ local raid = {
     db("raid.event", event, ...)
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
-      addonData.summon:postInitSetup()
-      addonData.raid:updateRaid()
+
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
+      addonData.summon:postInitSetup()
       addonData.raid.groupInit = false
     end
   end,
@@ -48,19 +48,14 @@ local raid = {
       return
     end
     roster, rosterOld = rosterOld, roster
-    old, new = new, old
-    wipe(new)
     wipe(roster)
 
     for i = 1, GetNumGroupMembers() do
       local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
       --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
       if name == nil then
-        -- I want to know if this ever fires, even if I am not monitoring the raid category
-        db("Got a nil back for name", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
         break -- protect the list
       end
-      new[name] = online or nil
       roster[name] = 1
 
       if rosterOld[name] == nil then
@@ -68,36 +63,6 @@ local raid = {
         local myName, _ = UnitName("player")
         if myName == name then
           addonData.gossip:raidJoined()
-        end
-      end
-
-      if (old[name] or rosterOld[name] == nil) and not online then
-        db("raid", name, "is offline.")
-        addonData.gossip:raiderLeft(name)
-        addonData.summon:offline(name, true)
-      elseif old[name] == nil and rosterOld[name] and online then
-        db("raid", name, "logged back on.")
-        addonData.summon:offline(name, false)
-      end
-
-      if isDead and not dead[name] then
-        db("raid", name, "is dead.")
-        addonData.summon:dead(name, true)
-        dead[name] = 1
-      elseif not isDead and dead[name] then
-        addonData.summon:dead(name, false)
-        dead[name] = nil
-      end
-
-      if zone == GetMinimapZoneText() then
-        if not self.inzone[name] then
-          db("raid", name, "is near,", zone)
-          self.inzone[name] = true
-        end
-      else
-        if self.inzone[name] then
-          db("raid", name, "left area, now in", zone)
-          self.inzone[name] = nil
         end
       end
 
@@ -117,8 +82,7 @@ local raid = {
         local name, _ = UnitName("player")
         if k == name then
           addonData.gossip:raidLeft()
-          wipe(addonData.summon.waiting)
-          wipe(old)
+          addonData.summon:listClear()
           wipe(rosterOld)
           addonData.raid.groupInit = true
         else
@@ -128,14 +92,6 @@ local raid = {
         self.inzone[k] = nil
       end
     end
-  end,
-
-  isDead = function(_, player)
-    return dead[player] == true
-  end,
-
-  isOffline = function(_, player)
-    return new[player] == nil
   end,
 
   fishArea = function(self)

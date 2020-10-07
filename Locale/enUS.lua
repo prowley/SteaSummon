@@ -102,4 +102,4 @@ L["version: %v\nbuild: %b\ndate: %d\ntocversion: %t\n\nSteaSummon version %s"] =
 
 -- gossip.lua
 L["There is a newer version available."] = true
-L["version"] = "Your version of SteaSummon has an old network protocol version. You really should update and restart your client now."
+L["version"] = "Network communications is disabled. Your version of SteaSummon has an old network protocol version. You should update and restart your client now."
