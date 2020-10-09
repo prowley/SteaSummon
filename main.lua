@@ -13,7 +13,6 @@
 -- TODO: location based summon phrases
 
 --- Visual
--- TODO: fancy highlights for new things
 -- TODO: add fancy spell casting next button
 
 

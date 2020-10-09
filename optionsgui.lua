@@ -105,6 +105,7 @@ optionsgui = {
             step = 0.1,
             bigStep = 0.1,
             width = "normal",
+            isPercent = true,
             set = function(_, val)
               SteaSummonSave.windowSize = val
               SteaSummonFrame:SetScale(val)
@@ -125,6 +126,7 @@ optionsgui = {
             step = 0.1,
             bigStep = 0.1,
             width = "normal",
+            isPercent = true,
             set = function(_, val)
               SteaSummonSave.listSize = val
               SteaSummonButtonFrame:SetScale(val)
@@ -240,9 +242,9 @@ optionsgui = {
           warlocks = {
             order = 2,
             name = L["Warlocks first"],
-            desc = L["Put summoners at the top of the list when they request a summon"],
+            desc = L["Put unbuffed summoners at the top of the list when they request a summon"],
             type = "toggle",
-            width = "full",
+            width = "double",
             descStyle = "inline",
             set = function(_, val)
               SteaSummonSave.warlocks = val
@@ -251,8 +253,25 @@ optionsgui = {
               return SteaSummonSave.warlocks
             end
           },
-          buffs = {
+          maxWarlocks = {
             order = 3,
+            name = L["Maximum warlocks first"],
+            desc = L["Maximum summoners to be prioritized"],
+            type = "range",
+            min = 1,
+            max = 5,
+            step = 1,
+            disabled = function() return not SteaSummonSave.warlocks end,
+            width = "double",
+            set = function(_, val)
+              SteaSummonSave.maxLocks = val
+            end,
+            get = function()
+              return SteaSummonSave.maxLocks
+            end
+          },
+          buffs = {
+            order = 6,
             name = L["Prioritize buffed players"],
             desc = L["Put players with world buffs ahead of named priority players"],
             type = "toggle",
@@ -266,8 +285,8 @@ optionsgui = {
             end
           },
           names = {
-            order = 6,
-            name = L["Players to summon first, if by first, you mean behind warlocks. One player per line."],
+            order = 7,
+            name = L["Players to summon first, if by first, you mean behind warlocks and buffed players. One player per line."],
             desc = L["These players will move to the front of the summon list when they request a summon"],
             width = "full",
             type = "input",
@@ -280,7 +299,7 @@ optionsgui = {
             end
           },
           last = {
-            order = 8,
+            order = 99,
             name = L["Players to summon last. Some people should just be nicer. One player per line."],
             desc = L["These players will move to the back of the summon list and stay there"],
             width = "full",
@@ -371,7 +390,7 @@ optionsgui = {
              name = function()
                local version, build, date, tocversion = GetBuildInfo()
                local pat = {["%%v"]=version, ["%%b"]=build, ["%%d"]=date, ["%%t"]=tocversion, ["%%s"]=GetAddOnMetadata("SteaSummon", "Version")}
-               local s = L["version: %v\nbuild: %b\ndate: %d\ntocversion: %t\n\nSteaSummon version %s"]
+               local s = L["SteaSummon version %s\n\nWoW client\nversion: %v\nbuild: %b\ndate: %d\ntocversion: %t"]
                return tstring(s, pat)
              end
            },

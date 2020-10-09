@@ -2,9 +2,9 @@
 ## Title: SteaSummon
 ## Notes: One button summoning, shared summoning list...
 ## Author: Stea
-## Version: 0.55
+## Version: 0.56
 ## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG
-## x-SteaSummon-Protocol-version: 0.2
+## x-SteaSummon-Protocol-version: 0.3
 
 Libs\embeds.xml
 Locale\Locales.xml
@@ -13,11 +13,11 @@ debug.lua
 util.lua
 buffs.lua
 settings.lua
+gossip.lua
 optionsgui.lua
 raid.lua
 summon.lua
 monitor.lua
-gossip.lua
 chat.lua
 events.lua
 main.lua

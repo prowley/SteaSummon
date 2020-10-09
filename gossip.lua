@@ -22,7 +22,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- v old version
 -- version SteaSummon version Broadcast
 
-local DEFAULT_NETLIST_TIME = 5
+local DEFAULT_NETLIST_TIME = 30
 
 
 local gossip = {
@@ -43,6 +43,9 @@ local gossip = {
   SSversion = 0,
   SSversion_notified = false,
   replayLog = {},
+  destLocks = {},
+  destClicks = {},
+  locksCount = 0,
 
 
   ---------------------------------
@@ -73,11 +76,16 @@ local gossip = {
         self:raidJoined()
       end
     else
-      if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        db("gossip", ">> retire >>", self:groupText())
-        self:SendCommMessage(self.channel, "retire", self:groupText())
-      end
+      self:retire()
       self:raidLeft()
+    end
+  end,
+
+  ---------------------------------
+  retire = function(self)
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      db("gossip", ">> retire >>", self:groupText())
+      self:SendCommMessage(self.channel, "retire", self:groupText())
     end
   end,
 
@@ -96,6 +104,7 @@ local gossip = {
   ---------------------------------
   postInit = function(self)
     table.sort(self.votingBooth)
+    wipe(self.netList)
     for _,v in pairs(self.votingBooth) do
       local _, _, _, _, _, name = GetPlayerInfoByGUID(v)
       db("gossip", "netlist:", name)
@@ -106,8 +115,9 @@ local gossip = {
 
     if not self:isLeader() then
       self:initialize()
+    else
+      self:replayMessageLog(self.replayLog)
     end
-    self:replayMessageLog(self.replayLog)
   end,
 
   ---------------------------------
@@ -149,6 +159,8 @@ local gossip = {
       -- 3. if not received, you are the first one on the list and network leader
       table.insert(self.votingBooth, 1, self.votes)
       self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME, self.netListTimeout)
+      -- make ourselves leader temporarily so we can replay messages to the leader when network established
+      table.insert(self.netList, 1, self.me)
     end
     self:SteaSummonVersion()
   end,
@@ -193,7 +205,11 @@ local gossip = {
       end
     end
 
+    local at = self.atDest[player]
     self.atDest[player] = nil
+    if at then
+      self:updateCounts(false, player)
+    end
   end,
 
   ---------------------------------
@@ -202,6 +218,7 @@ local gossip = {
     if self.netlistTimer and not self.netlistTimer:IsCancelled() then
       self.netlistTimer:Cancel()
     end
+    addonData.summon:listClear()
     self.recvElections = 0
     self.inInit = true
     wipe(self.netList)
@@ -209,6 +226,11 @@ local gossip = {
     wipe(self.atDest)
     self.atDestCount = 0
     wipe(self.replayLog)
+    wipe(self.destLocks)
+    wipe(self.destClicks)
+    self.locksCount = 0
+    addonData.summon:setClicks(0,0)
+    addonData.summon:setDestination("","")
   end,
 
   ---------------------------------
@@ -294,8 +316,8 @@ local gossip = {
       if self:noComms() then
         return
       end
-      if isWhisper then
-        db("gossip", ">> add >> WHISPER", player)
+      if isWhisper or self.inInit then
+        db("gossip", ">> add >> WHISPER", self.netList[1], player)
         self:SendCommMessage(self.channel, "ad " .. player, "WHISPER", self.netList[1])
       end
     end
@@ -308,28 +330,80 @@ local gossip = {
     local destination = string.gsub(zone .. "+" .. location, " ", "_")
 
     if not player and self:isLeader() then
-      db("gossip", ">> destination >>", self:groupText(), destination)
-      if not noSet then
-        addonData.summon:setDestination(zone,location)
-      end
-      if self:noComms() then
-        return
-      end
+      if addonData.summon.zone ~= zone or addonData.summon.location ~= location then
+        db("gossip", ">> destination >>", self:groupText(), destination)
+        self:wipeCounts()
 
-      if zone == "" then
-        self.atDestCount = 0
+        if self:noComms() then
+          return
+        end
+
+        self:SendCommMessage(self.channel, "d " .. destination, self:groupText())
+        if not noSet then
+          addonData.summon:setDestination(zone,location)
+          if zone == "" then
+            self:wipeCounts()
+          end
+        end
       end
-      self:SendCommMessage(self.channel, "d " .. destination, self:groupText())
     else
       if self:noComms() then
         return
       end
       if not player then
         player = self.netList[1]
+        self:wipeCounts()
       end
       db("gossip", ">> destination >> WHISPER", player, destination)
       self:SendCommMessage(self.channel, "d " .. destination, "WHISPER", player)
     end
+  end,
+
+  ---------------------------------
+  wipeCounts = function(self)
+    self.atDestCount = 0
+    self.locksCount = 0
+    wipe(self.atDest)
+    wipe(self.destLocks)
+    wipe(self.destClicks)
+    addonData.summon:setClicks(self.locksCount, self.atDestCount - self.locksCount)
+  end,
+
+  ---------------------------------
+  updateCounts = function(self, at, name)
+    local summonTest
+    if name == nil or name == "" then
+      return
+    end
+    if name == self.me then
+      summonTest = nil
+    else
+      summonTest = name
+    end
+    if at then
+      self.atDestCount = self.atDestCount + 1
+      if addonData.util:playerCanSummon(summonTest) then
+        self.destLocks[name] = true
+        self.locksCount = self.locksCount + 1
+      else
+        self.destClicks[name] = true
+      end
+    else
+      self.atDestCount = self.atDestCount - 1
+      if addonData.util:playerCanSummon(summonTest) then
+        self.destLocks[name] = nil
+        self.locksCount = self.locksCount - 1
+      else
+        self.destClicks[name] = nil
+      end
+    end
+    db('gossip', "count", name, "locks", self.locksCount, "clicks", self.atDestCount - self.locksCount, "total", self.atDestCount)
+    addonData.summon:setClicks(self.locksCount, self.atDestCount - self.locksCount)
+  end,
+
+  ---------------------------------
+  getCounts = function(self)
+    return self.atDestCount, self.locksCount, self.atDestCount - self.locksCount
   end,
 
   ---------------------------------
@@ -340,50 +414,36 @@ local gossip = {
         name = self.me
         settingSelf = true
       end
-      if (settingSelf and self.atDest[name] == nil and at) or (self.atDest[name] and not at) then
+
+      if (self.atDest[name] == nil and at) or (self.atDest[name] and not at) then
+        db("gossip", name, "at destination:", self.atDest[name], "adding:", at)
         self.atDest[name] = at or nil
 
-        if settingSelf then
-          if at then
-            self.atDestCount = self.atDestCount + 1
-          else
-            self.atDestCount = self.atDestCount - 1
+        if self:noComms() then
+          if self.atDestCount == 0 then
+            self:destination("", "") -- you have moved on
           end
+          return
+        end
+
+        self:updateCounts(at, name)
+
+        if self.atDestCount == 0 then
+          self:destination("", "") -- the raid has moved on
+        else
+          db("gossip", ">> atDestination >>", self:groupText(), name, at)
+          self:SendCommMessage(self.channel, "atD " .. name .. "+" .. tostring(at), self:groupText())
         end
       end
 
       db("gossip", "at destination count:", self.atDestCount)
 
-      if self:noComms() then
-        if self.atDestCount == 0 then
-          self:destination("", "") -- you have moved on
-        end
-        return
-      end
-
-      if self.atDestCount == 0 then
-        self:destination("", "") -- the raid has moved on
-      else
-        db("gossip", ">> atDestination >>", self:groupText(), name, at)
-        self:SendCommMessage(self.channel, "atD " .. self.netList[1] .. "+" .. tostring(at), self:groupText())
-      end
-
-    else
+    else -- not leader
       if self:noComms() then
         return
       end
       db("gossip", ">> atDestination >> WHISPER", self.netList[1], at)
       self:SendCommMessage(self.channel, "atD " .. self.me .. "+" .. tostring(at), "WHISPER", self.netList[1])
-    end
-  end,
-
-  ---------------------------------
-  atDestAction = function(self)
-    db("gossip", "checking for zero destination")
-    self = addonData.gossip
-    self.atDestTimer = nil
-    if self.atDestCount == 0 and self:isLeader() then
-      self:destination("", "") -- the raid has moved on
     end
   end,
 
@@ -433,7 +493,7 @@ local gossip = {
     if self:noComms() then
       return
     else
-      if sender ~= self.me then
+      if sender ~= self.me or self.inInit then
         addonData.gossip:receive(msg, dist, sender, ... )
       end
     end
@@ -460,6 +520,7 @@ local gossip = {
     -- request could come in while we don't know who is leader, or instructions to
     -- change the status for someone in a waiting list we don't have yet
     if self.inInit and not okForInit[cmd] then
+      db("gossip", "adding replay log entry:", msg, sender)
       table.insert(self.replayLog, {msg, sender})
       return
     end
@@ -499,18 +560,23 @@ local gossip = {
         if addonData.summon.numwaiting then
           local data = addonData.util:marshalWaitingTable()
           local dl = addonData.util:tableToMultiLine(self.atDest)
-          db("gossip", ">> initialize reply >>", data)
-          -- first send the dest list
-          self:SendCommMessage(self.channel, "dl " .. dl, "WHISPER", sender, "BULK")
-          -- then set their destination
+          db("gossip", ">> initialize reply >>")
+          -- first set their destination
           self:destination(addonData.summon.zone, addonData.summon.location, nil, sender)
+          -- then send the dest list
+          db("gossip", ">> destination list >> WHISPER", sender, dl)
+          self:SendCommMessage(self.channel, "dl " .. dl, "WHISPER", sender, "BULK")
           -- next waiting list
+          db("gossip", ">> waiting list >> WHISPER", sender, data)
           self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender, "BULK")
         end
       end
 
       --- leave netgroup (turned off comms or had a bad version)
     elseif cmd == "retire" then
+      if self.inInit then
+        return -- group messages get saved up on reload...
+      end
       db("gossip", "<< retire <<", sender)
       self:raiderLeft(sender)
 
@@ -519,9 +585,12 @@ local gossip = {
       db("gossip", "<< at destination list <<")
       self.atDest = addonData.util:multiLineToMap(subcmd)
       self.atDestCount = 0
-      for _,_ in pairs(self.atDest) do
-        self.atDestCount = self.atDestCount + 1
+      self.locksCount = 0
+      for i,_ in pairs(self.atDest) do
+        self:updateCounts(true, i)
       end
+
+      db("gossip", "at destination count:", self.atDestCount)
 
     elseif cmd == "l" then
       db("gossip", "<< waiting list <<", subcmd)
@@ -533,13 +602,16 @@ local gossip = {
       local destination = string.gsub(subcmd, "_", " ")
       local zone, location = strsplit("+", destination)
       db("gossip", "<< destination <<", zone, location)
-      if zone == "" then
-        self.atDestCount = 0
-        wipe(self.atDest)
+
+      if zone == nil or location == nil then
+        zone = ""
+        location = ""
       end
-      addonData.summon:setDestination(zone, location)
       if self:isLeader() then
-        self:destination(zone, location, true)
+        self:destination(zone, location)
+      else
+        addonData.summon:setDestination(zone, location)
+        self:wipeCounts()
       end
 
       --- at destination
@@ -548,18 +620,14 @@ local gossip = {
       at = at == "true"
       db("gossip", "<< at destination <<", player, at)
 
-      self.atDest[player] = at or nil
-
-      if at then
-        self.atDestCount = self.atDestCount + 1
-      else
-        self.atDestCount = self.atDestCount - 1
-      end
-
       if self:isLeader() then
-        -- carry on as normal otherwise, it might hit zero later, but it will be dealt with if its finally zero
-        -- by whoever is the leader at that time
         self:atDestination(at, player)
+      else
+        if (self.atDest[player] == nil and at) or (self.atDest[player] and not at) then
+          self.atDest[player] = at or nil
+          self:updateCounts(at, player)
+        end
+        db("gossip", "at destination count:", self.atDestCount)
       end
 
       --- status change
@@ -660,6 +728,7 @@ local gossip = {
     elseif cmd=="version" then
       db("gossip", "<< version <<", sender)
       local reported_version = tonumber(subcmd)
+      db("gossip", "my version:", self.SSversion, sender, "version:", reported_version)
       if reported_version < self.SSversion then
         self:SteaSummonVersion(sender)
       end

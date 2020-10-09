@@ -26,11 +26,15 @@ L["Summoning %p, please click the portal"] = true
 
 -- summon.lua
 L["Warlock"] = true
+L["W"] = true
 L["requested"] = true
 L["Buffed"] = true
+L["B"] = true
 L["Prioritized"] = true
 L["Last"] = true
+L["L"] = true
 L["Normal"] = true
+L["N"] = true
 L["dead"] = true
 L["offline"] = true
 L["pending"] = true
@@ -43,6 +47,8 @@ L["Destination: %subzone, %zone"] = true
 L["Next"] = true
 
 -- optionsgui.lua
+L["Maximum warlocks first"] = true
+L["Maximum summoners to be prioritized"] = true
 L["One button summoning, shared summoning list...    (Options for: %name)"] = true
 L["General"] = true
 L["Window Options"] = true
@@ -79,10 +85,10 @@ L["Priorities"] = true
 L["Priority Options"] = true
 L["These options determine where in the summon list players are inserted when they ask for a summon."] = true
 L["Warlocks first"] = true
-L["Put summoners at the top of the list when they request a summon"] = true
+L["Put unbuffed summoners at the top of the list when they request a summon"] = true
 L["Prioritize buffed players"] = true
 L["Put players with world buffs ahead of named priority players"] = true
-L["Players to summon first, if by first, you mean behind warlocks. One player per line."] = true
+L["Players to summon first, if by first, you mean behind warlocks and buffed players. One player per line."] = true
 L["These players will move to the front of the summon list when they request a summon"] = true
 L["Players to summon last. Some people should just be nicer. One player per line."] = true
 L["These players will move to the back of the summon list and stay there"] = true
@@ -98,7 +104,7 @@ L["Reset all options to the default values"] = true
 L["Use AddOn Broadcast Communications"] = true
 L["broadcastdesc"] = "Get and send summoning status updates. Gives you notifications of summon status changes, and helps to keep the summoning list alive through relogs. Makes the Next button more effective with multiple warlock summoners i.e. please don't turn this off."
 L["Version Details"] = true
-L["version: %v\nbuild: %b\ndate: %d\ntocversion: %t\n\nSteaSummon version %s"] = true
+L["SteaSummon version %s\n\nWoW client\nversion: %v\nbuild: %b\ndate: %d\ntocversion: %t"] = true
 
 -- gossip.lua
 L["There is a newer version available."] = true
