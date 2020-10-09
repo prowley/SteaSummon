@@ -73,11 +73,16 @@ local gossip = {
         self:raidJoined()
       end
     else
-      if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        db("gossip", ">> retire >>", self:groupText())
-        self:SendCommMessage(self.channel, "retire", self:groupText())
-      end
+      self:retire()
       self:raidLeft()
+    end
+  end,
+
+  ---------------------------------
+  retire = function(self)
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      db("gossip", ">> retire >>", self:groupText())
+      self:SendCommMessage(self.channel, "retire", self:groupText())
     end
   end,
 

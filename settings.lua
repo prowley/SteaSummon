@@ -92,6 +92,7 @@ settings = {
 
   saveOnLogout = function(self, event, ...)
     --- timestamp and the list
+    addonData.gossip:retire() -- while we can recover on /reload, if we don't retire as leader events might be missed
     SteaSummonSave.timeStamp = GetTime()
     SteaSummonSave.waiting = addonData.summon.waiting -- can get displaced if list is unmarshalled
   end,
