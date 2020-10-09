@@ -202,6 +202,7 @@ local gossip = {
     if self.netlistTimer and not self.netlistTimer:IsCancelled() then
       self.netlistTimer:Cancel()
     end
+    addonData.summon:listClear()
     self.recvElections = 0
     self.inInit = true
     wipe(self.netList)

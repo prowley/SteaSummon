@@ -50,6 +50,11 @@ local raid = {
     roster, rosterOld = rosterOld, roster
     wipe(roster)
 
+    if not IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      addonData.raid.groupInit = true
+      addonData.gossip:raidLeft()
+    end
+
     for i = 1, GetNumGroupMembers() do
       local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
       --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
