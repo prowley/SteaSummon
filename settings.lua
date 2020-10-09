@@ -63,6 +63,10 @@ settings = {
     if SteaSummonSave.windowPos == nil or (type(SteaSummonSave.windowPos[2]) == "table" or not SteaSummonSave.windowPos["height"]) then
       SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
     end
+
+    if SteaSummonSave.maxLocks == nil then
+      SteaSummonSave.maxLocks = 2
+    end
   end,
 
   reset = function()
@@ -88,6 +92,7 @@ settings = {
     SteaSummonSave.waitingKeepTime = 5
     SteaSummonSave.buffs = true
     SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
+    SteaSummonSave.maxLocks = 2
   end,
 
   saveOnLogout = function(self, event, ...)

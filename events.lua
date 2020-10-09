@@ -78,9 +78,9 @@ function loaded(_, event, ...)
     -- init modules, some of these just set up debug categories
     addonData.settings:init()
     addonData.optionsgui:init()
+    addonData.gossip:init()
     addonData.raid:init()
     addonData.monitor:init()
-    addonData.gossip:init()
     addonData.summon:init()
     addonData.chat:init()
     addonData.util:init()
@@ -94,6 +94,6 @@ function loaded(_, event, ...)
     addonData.debug:chatCat("buffs")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
-    cprint("loaded")
+    cprint("loaded, version", GetAddOnMetadata(addonName, "Version"))
   end
 end

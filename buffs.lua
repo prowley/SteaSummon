@@ -63,11 +63,32 @@ buffs = {
       db("buffs", player, "has buff", name)
       if self.buffs[spellId] then
         db("buffs", name, "is of interest")
-        out[i] = {spellId, name, icon}
+        out[i] = {spellId, icon}
         i = i + 1
       end
     end
 
+    return out
+  end,
+
+  marshallBuffs = function(self, buffs)
+    local out = ""
+    local spacer = ""
+    for _,v in pairs(buffs) do
+      if #v then
+        out = out .. spacer .. v[1] .. "~" .. v[2]
+        spacer = "&"
+      end
+    end
+    return out
+  end,
+
+  unmarshallBuffs = function(self, marshalled)
+    local out = {}
+    local tmpOut = { strsplit("&", marshalled) }
+    for i,v in pairs(tmpOut) do
+      out[i] = { strsplit("~", tmpOut[i]) }
+    end
     return out
   end,
 }

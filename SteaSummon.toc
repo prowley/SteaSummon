@@ -13,11 +13,11 @@ debug.lua
 util.lua
 buffs.lua
 settings.lua
+gossip.lua
 optionsgui.lua
 raid.lua
 summon.lua
 monitor.lua
-gossip.lua
 chat.lua
 events.lua
 main.lua

@@ -25,6 +25,8 @@ local summon = {
     ["Normal"] = L["N"],
     ["Last"] = L["L"]
   },
+  localLocks = 0,
+  localClickers = 0,
 
   ---------------------------------
   init = function(self)
@@ -71,13 +73,32 @@ local summon = {
         or SteaSummonSave.waitingKeepTime == 0
         or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
       db("wiping wait list")
-      db("saved ts", SteaSummonSave.timeStamp, "time", ts, "keep mins", SteaSummonSave.waitingKeepTime)
+      db("saved mins", (ts - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       self:listClear()
     end
 
     -- good time for a version check
     addonData.gossip:SteaSummonVersion()
+  end,
+
+  ---------------------------------
+  setClicks = function(self, locks, clicks)
+    self.localLocks = locks
+    self.localClickers = clicks
+    if SteaSummonFrame then
+      if IsInGroup(LE_PARTY_CATEGORY_HOME) and self.location ~= "" and self.zone ~= nil then
+        local color = ""
+        if locks and locks + clicks > 2 then
+          SteaSummonFrame.status:SetTextColor(0,1,0,.5)
+        else
+          SteaSummonFrame.status:SetTextColor(.8,.8,.8,.5)
+        end
+        SteaSummonFrame.status:SetText(L["Warlocks"] .. " " .. locks .. "\n" .. L["Clickers"] .. " "..  clicks)
+      else
+        SteaSummonFrame.status:SetText("")
+      end
+    end
   end,
 
   ---------------------------------
@@ -111,16 +132,17 @@ local summon = {
         .. "+" .. self:recTime(rec)
         .. "+" .. self:recStatus(rec)
         .. "+" .. self:recPrio(rec)
+        .. "+" .. addonData.buffs:marshallBuffs(self:recBuffs(rec))
   end,
 
   ---------------------------------
   recUnMarshal = function(self, data)
     if data then
-      local player, time, status, prio = strsplit("+", data)
-      if player and time and status and prio then
-        return self:waitRecord(player, time, status, prio)
+      local player, time, status, prio, buffs = strsplit("+", data)
+      if player and time and status and prio and buffs then
+        return self:waitRecord(player, time, status, prio, addonData.buffs:unmarshallBuffs(buffs))
       else
-        db("summon.waitlist.record", "unmarshalled data contains nil", player, time, status, prio)
+        db("summon.waitlist.record", "unmarshalled data contains nil", player, time, status, prio, buffs)
       end
     else
       db("summon.waitlist.record", "tried to unmarshal nil")
@@ -186,6 +208,16 @@ local summon = {
   end,
 
   ---------------------------------
+  recBuffs = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record buffs value:", val)
+      rec[6] = val
+    end
+    return rec[6] or {}
+  end,
+
+  ---------------------------------
   recRemove = function(self, player)
     local ret = false
     local idx = self:findWaitingPlayerIdx(player)
@@ -248,9 +280,11 @@ local summon = {
 
     -- priorities
     local inserted = false
+    local buffs = addonData.buffs:report(player)
 
     -- Prio warlock
-    if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
+    if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player)
+        and #buffs == 0 and self.localLocks <= SteaSummonSave.maxLocks then
       for k, wait in pairs(self.waiting) do
         if self:recPrio(wait) ~= "Warlock" then
           db("summon.waitlist", "Warlock", player, "gets prio")
@@ -267,10 +301,10 @@ local summon = {
     end
 
     -- Prio buffs
-    local buffs = addonData.buffs:report(player) -- that's all for now, just observing
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
-        if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed") then
+        if not self:recPrio(wait) == "Warlock"
+            or (self:recPrio(wait) == "Buffed" and #self:recBuffs(wait) >= #buffs) then
           self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
@@ -1162,6 +1196,7 @@ local summon = {
       end
       if SteaSummonToButton then
         SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+        self.infoSend = false
       end
 
       if self.zone ~= "" and self.location ~= "" then -- destination is set
@@ -1184,9 +1219,10 @@ local summon = {
   ---------------------------------
   setDestination = function(self, zone, location)
     if location == nil or zone == nil then
-      db("summon.misc", "bad inputs to setDestination", zone, location)
-      return
+      location = ""
+      zone = ""
     end
+
     if self.zone == zone and self.location == location then
       return
     end
@@ -1203,15 +1239,21 @@ local summon = {
       end
       if self:isAtDestination() then
         if SteaSummonToButton then
-          self.infoSend = true
           SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
         end
+        self.infoSend = true
         addonData.gossip:atDestination(true)
+      else
+        if SteaSummonToButton then
+          SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+        end
+        self.infoSend = false
       end
     else
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetText("")
       end
+      self.infoSend = false
     end
   end,
 
