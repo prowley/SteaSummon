@@ -317,6 +317,7 @@ local gossip = {
       end
 
       if zone == "" then
+        wipe(self.atDest)
         self.atDestCount = 0
       end
       self:SendCommMessage(self.channel, "d " .. destination, self:groupText())

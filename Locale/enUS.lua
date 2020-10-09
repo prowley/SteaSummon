@@ -26,11 +26,15 @@ L["Summoning %p, please click the portal"] = true
 
 -- summon.lua
 L["Warlock"] = true
+L["W"] = true
 L["requested"] = true
 L["Buffed"] = true
+L["B"] = true
 L["Prioritized"] = true
 L["Last"] = true
+L["L"] = true
 L["Normal"] = true
+L["N"] = true
 L["dead"] = true
 L["offline"] = true
 L["pending"] = true

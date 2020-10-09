@@ -19,6 +19,12 @@ local summon = {
   dirty = true, -- waiting list changed flag, to begin we want to show load list so default dirty
   postInit = false,
   isCasting = false,
+  buffLetter = {
+    ["Warlock"] = L["W"],
+    ["Buffed"] = L["B"],
+    ["Normal"] = L["N"],
+    ["Last"] = L["L"]
+  },
 
   ---------------------------------
   init = function(self)
@@ -246,16 +252,16 @@ local summon = {
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player) then
       for k, wait in pairs(self.waiting) do
-        if self:recPrio(wait) ~= L["Warlock"] then
+        if self:recPrio(wait) ~= "Warlock" then
           db("summon.waitlist", "Warlock", player, "gets prio")
-          self:recAdd(self:waitRecord(player, 0, L["requested"], L["Warlock"]), k)
+          self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"), k)
           inserted = true
           break
         end
       end
       if not inserted then
         db("summon.waitlist", "Warlock", player, "gets prio")
-        self:recAdd(self:waitRecord(player, 0, L["requested"], L["Warlock"]))
+        self:recAdd(self:waitRecord(player, 0, "requested", "Warlock"))
         inserted = true
       end
     end
@@ -264,15 +270,15 @@ local summon = {
     local buffs = addonData.buffs:report(player) -- that's all for now, just observing
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
-        if not (self:recPrio(wait) == L["Warlock"] or self:recPrio(wait) == L["Buffed"]) then
-          self:recAdd(self:waitRecord(player, 0, L["requested"], L["Buffed"]), k)
+        if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed") then
+          self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
           break
         end
       end
       if not inserted then
-        self:recAdd(self:waitRecord(player, 0, L["requested"], L["Buffed"]))
+        self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"))
         db("summon.waitlist", "Buffed " .. player .. " gets prio")
         inserted = true
       end
@@ -281,16 +287,16 @@ local summon = {
     -- Prio list
     if not inserted and addonData.settings:findPrioPlayer(player) ~= nil then
       for k, wait in pairs(self.waiting) do
-        if not (self:recPrio(wait) == L["Warlock"] or self:recPrio(wait) == L["Buffed"]
+        if not (self:recPrio(wait) == "Warlock" or self:recPrio(wait) == "Buffed"
             or addonData.settings:findPrioPlayer(self:recPlayer(wait))) then
-          self:recAdd(self:waitRecord(player, 0, L["requested"], L["Prioritized"]), k)
+          self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"), k)
           db("summon.waitlist", "Priority " .. player .. " gets prio")
           inserted = true
           break
         end
       end
       if not inserted then
-        self:recAdd(self:waitRecord(player, 0, L["requested"], L["Prioritized"]))
+        self:recAdd(self:waitRecord(player, 0, "requested", "Prioritized"))
         db("summon.waitlist", "Priority " .. player .. " gets prio")
         inserted = true
       end
@@ -298,21 +304,21 @@ local summon = {
 
     -- Prio last
     if not inserted and addonData.settings:findShitlistPlayer(player) ~= nil then
-      self:recAdd(self:waitRecord(player, 0, L["requested"], L["Last"]))
+      self:recAdd(self:waitRecord(player, 0, "requested", "Last"))
       inserted = true
     end
 
     -- Prio normal
     if not inserted then
       local i = self.numwaiting + 1
-      while i > 1 and self:recPrio(self.waiting[i-1]) == L["Last"]
-          and not (self:recPrio(self.waiting[i-1]) == L["Buffed"]
-          or self:recPrio(self.waiting[i-1]) == L["Warlock"]
-          or self:recPrio(self.waiting[i-1]) == L["Prioritized"]) do
+      while i > 1 and self:recPrio(self.waiting[i-1]) == "Last"
+          and not (self:recPrio(self.waiting[i-1]) == "Buffed"
+          or self:recPrio(self.waiting[i-1]) == "Warlock"
+          or self:recPrio(self.waiting[i-1]) == "Prioritized") do
         db("summon.waitlist", self:recPlayer(self.waiting[i-1]), "on shitlist, finding a better spot")
         i = i - 1
       end
-      self:recAdd(self:waitRecord(player, 0, L["requested"], L["Normal"]), i)
+      self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
     db("summon.waitlist", player .. " added to waiting list")
@@ -585,7 +591,8 @@ local summon = {
         player = self:recPlayer(self.waiting[i])
         self:enableButton(i, true, player)
         addonData.buttons[i].Button:SetText(player)
-        addonData.buttons[i].Priority["FS"]:SetText(string.sub(self:recPrio(self.waiting[i]), 1, 1))
+
+        addonData.buttons[i].Priority["FS"]:SetText(self.buffLetter[self:recPrio(self.waiting[i])])
 
         if self:offline(player) or self:dead(player) then
           addonData.buttons[i].Button:SetEnabled(false)
@@ -614,7 +621,7 @@ local summon = {
                   if UnitPower("player") >= 300 then
                     self.isCasting = true
                     db("summon.display","summoning ", player)
-                    addonData.gossip:status(player, L["pending"])
+                    addonData.gossip:status(player, "pending")
                     addonData.chat:raid(SteaSummonSave.raidchat, player)
                     addonData.chat:say(SteaSummonSave.saychat, player)
                     addonData.chat:whisper(SteaSummonSave.whisperchat, player)
@@ -659,7 +666,7 @@ local summon = {
 
         if self.waiting[i]  then
           --- Next Button
-          if not next and self:recStatus(self.waiting[i]) == L["requested"] and addonData.util:playerCanSummon() then
+          if not next and self:recStatus(self.waiting[i]) == "requested" and addonData.util:playerCanSummon() then
             next = true
             if not self.isCasting then
               local spell = GetSpellInfo(698) -- Ritual of Summoning
@@ -686,7 +693,7 @@ local summon = {
           end
 
           --- Status
-          addonData.buttons[i].Status["FS"]:SetText(self:recStatus(self.waiting[i]))
+          addonData.buttons[i].Status["FS"]:SetText(L[self:recStatus(self.waiting[i])])
 
           --- New flare
           if self:recNew(self.waiting[i]) then
@@ -1031,7 +1038,7 @@ local summon = {
     local waitEntry = self:findWaitingPlayer(player)
     if waitEntry ~= nil then
       db("summon.waitlist", "a summon is pending for " .. player)
-      self:recStatus(waitEntry, L["pending"])
+      self:recStatus(waitEntry, "pending")
     end
   end,
 
@@ -1053,14 +1060,14 @@ local summon = {
   ---------------------------------
   summonFail = function(self)
     db("summon.waitlist", "something went wrong, resetting status of " .. self.summoningPlayer .. " to requested")
-    addonData.gossip:status(self.summoningPlayer, L["requested"])
+    addonData.gossip:status(self.summoningPlayer, "requested")
     self.isCasting = false
   end,
 
   ---------------------------------
   summonSuccess = function(self)
     db("summon.waitlist", "summon succeeded, setting status of " .. self.summoningPlayer .. " to summoned")
-    addonData.gossip:status(self.summoningPlayer, L["summoned"])
+    addonData.gossip:status(self.summoningPlayer, "summoned")
     self.isCasting = false
   end,
 
@@ -1069,12 +1076,12 @@ local summon = {
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
-      if offline and not self:recStatus(self.waiting[idx]) == L["offline"] then
+      if offline and not self:recStatus(self.waiting[idx]) == "offline" then
         db("summon.waitlist", "setting status of " .. player .. " to offline")
-        state = L["offline"]
-      elseif not online and self:recStatus(self.waiting[idx]) == L["offline"] then
+        state = "offline"
+      elseif not online and self:recStatus(self.waiting[idx]) == "offline" then
         db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
-        state = L["requested"]
+        state = "requested"
       end
       if state ~= "" then
         self:recStatus(self.waiting[idx], state)
@@ -1098,12 +1105,12 @@ local summon = {
     local idx = self:findWaitingPlayerIdx(player)
     if idx then
       local state = ""
-      if dead and not self.waiting[idx][3] == L["dead"] then
-        state = L["dead"]
+      if dead and not self.waiting[idx][3] == "dead" then
+        state = "dead"
         db("summon.waitlist", "setting status of", player, "to dead")
-      elseif not dead and self.waiting[idx][3] == L["dead"] then
+      elseif not dead and self.waiting[idx][3] == "dead" then
         db("summon.waitlist", "setting status of", player, "from dead to requested")
-        state = L["requested"]
+        state = "requested"
       end
       if state ~= "" then
         self:recStatus(self.waiting[idx], state)
