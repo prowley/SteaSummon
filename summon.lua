@@ -84,12 +84,12 @@ local summon = {
 
   ---------------------------------
   setClicks = function(self, locks, clicks)
-    self.localLocks = locks
-    self.localClickers = clicks
+    self.localLocks = tonumber(locks)
+    self.localClickers = tonumber(clicks)
     if SteaSummonFrame then
       if IsInGroup(LE_PARTY_CATEGORY_HOME) and self.location ~= "" and self.zone ~= nil then
         local color = ""
-        if locks and locks + clicks > 2 then
+        if self.localLocks and self.localLocks + self.localClickers > 2 then
           SteaSummonFrame.status:SetTextColor(0,1,0,.5)
         else
           SteaSummonFrame.status:SetTextColor(.8,.8,.8,.5)
@@ -621,6 +621,22 @@ local summon = {
       local cancelClick
       local r,g,b,_ = 0.5, 0.5, 0.5
 
+      local SetMacro = function(index)
+        if (addonData.util:playerCanSummon()) then
+          if not self.isCasting then
+            if UnitPower("player") >= 300 then
+              local spell = GetSpellInfo(698) -- Ritual of Summoning
+              addonData.buttons[index].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
+            else
+              local spell = GetSpellInfo(1454) -- Life tap rank 1, but we don't use rank
+              addonData.buttons[index].Button:SetAttribute("macrotext", "/cast " .. spell)
+            end
+          else
+            addonData.buttons[index].Button:SetAttribute("macrotext", "")
+          end
+        end
+      end
+
       if self.waiting[i] ~= nil then
         player = self:recPlayer(self.waiting[i])
         self:enableButton(i, true, player)
@@ -638,22 +654,16 @@ local summon = {
           r,g,b,_ = GetClassColor(class)
           addonData.buttons[i].Button:SetEnabled(true)
           addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
-          if (addonData.util:playerCanSummon()) then
-            local spell = GetSpellInfo(698) -- Ritual of Summoning
-            if not self.isCasting then
-              addonData.buttons[i].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
-            else
-              addonData.buttons[i].Button:SetAttribute("macrotext", "")
-            end
-          end
+
+          SetMacro(i)
+
           local z,l = self:getCurrentLocation()
 
           if (addonData.util:playerCanSummon()) then
             summonClick = function(_, button)
               if button == nil or button == "LeftButton" then
-                if not self.isCasting then
+                if not addonData.summon.isCasting then
                   if UnitPower("player") >= 300 then
-                    self.isCasting = true
                     db("summon.display","summoning ", player)
                     addonData.gossip:status(player, "pending")
                     addonData.chat:raid(SteaSummonSave.raidchat, player)
@@ -665,6 +675,8 @@ local summon = {
                   else
                     addonData.chat:whisper(L["Imagine not having enough mana."], self.me)
                   end
+                else
+                  addonData.chat:say(SteaSummonSave.clicknag, player)
                 end
               end
             end
@@ -700,14 +712,10 @@ local summon = {
 
         if self.waiting[i]  then
           --- Next Button
-          if not next and self:recStatus(self.waiting[i]) == "requested" and addonData.util:playerCanSummon() then
+          if not next and (self:recStatus(self.waiting[i]) == "requested"
+              and addonData.util:playerCanSummon() or self.isCasting) then
             next = true
-            if not self.isCasting then
-              local spell = GetSpellInfo(698) -- Ritual of Summoning
-              addonData.buttons[38].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
-            else
-              addonData.buttons[38].Button:SetAttribute("macrotext", "")
-            end
+            SetMacro(38)
             addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
             addonData.buttons[38].Button:Show()
           end
@@ -736,7 +744,7 @@ local summon = {
           end
         end
 
-        if not next then
+        if not next and not self.isCasting then
           -- all summons left are pending, disable the next button
           addonData.buttons[38].Button:Hide()
         end
@@ -1306,16 +1314,9 @@ local summon = {
   ---------------------------------
   lastCast = "",
 
-  castWatch = function(_, event, target, castUID, spellId, ...)
+  castWatch = function(self, event, target, castUID, spellId, ...)
+    self = addonData.summon
     db("summon.spellcast", event, " ", target, castUID, spellId, ...)
-
-    -- these events can get posted up to 3 times (at least testing on myself) player, raid1 (me), target
-    -- observed:
-    -- when target is you, get target message. otherwise no
-    -- guesses:
-    -- you get target if target is casting
-    -- you get player if you are casting
-    -- you get raid1 if there is a raid (not party) if someone in your raid is casting (even if it is you) *** if true this is very cool
 
     -- only interested in summons cast by player for now
     if target ~= "player" then
@@ -1324,28 +1325,33 @@ local summon = {
 
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
       -- this is the place to find out if a non-channelled spell used a soul shard
-      if g_self.isWarlock and g_self.usesSoulShard[spellId] then
-        g_self:shardIncrementBy(-1)
+      if self.isWarlock and self.usesSoulShard[spellId] then
+        self:shardIncrementBy(-1)
+      end
+    elseif event == "UNIT_SPELLCAST_CHANNEL_START" or
+      event == "UNIT_SPELLCAST_START" then
+      if spellId == 698 then
+        self.isCasting = true
       end
     elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
-      if g_self.isWarlock then
-        local oldCount = g_self.shards
-        g_self.shards = addonData.summon.shardCount(g_self)
+      if self.isWarlock then
+        local oldCount = self.shards
+        self.shards = addonData.summon.shardCount(self)
         if spellId == 698 then -- "Ritual of Summoning"
           --- update shards (if shard count decreased then the summon went through!)
           if oldCount > g_self.shards then
-            addonData.summon.summonSuccess(g_self)
+            addonData.summon.summonSuccess(self)
           else
-            addonData.summon.summonFail(g_self)
+            addonData.summon.summonFail(self)
           end
         end
       end
     elseif event == "UNIT_SPELLCAST_INTERRUPTED"
         or event == "UNIT_SPELLCAST_FAILED" then
       -- we can get this multiple times for "player" for the same cast, we only want to act once
-      if spellId == 698 and g_self.lastCast ~= castUID then -- "Ritual of Summoning"
-        g_self.lastCast = castUID
-        addonData.summon.summonFail(g_self)
+      if spellId == 698 and self.lastCast ~= castUID then -- "Ritual of Summoning"
+        self.lastCast = castUID
+        addonData.summon.summonFail(self)
       end
     end
   end,

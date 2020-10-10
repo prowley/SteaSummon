@@ -22,6 +22,7 @@ local raid = {
   groupInit = true,
   roster = {},
   rosterOld = {},
+  clickers = {},
 
   init = function(self)
     addonData.debug:registerCategory("raid.event")
@@ -109,36 +110,24 @@ local raid = {
     end
   end,
 
+  fishedClickers = function(self)
+    return self.clickers
+  end,
+
   fishArea = function(self)
     if not IsInGroup(LE_PARTY_CATEGORY_HOME) then
-      if SteaSummonFrame then
-        --SteaSummonFrame.status:SetText("")
-      end
-      --addonData.summon:setClicks(0, 0)
       return
     end
 
-    --self:updateRaid()
-
-    local lock = 0
-    local click = 0
+    wipe(self.clickers)
 
     for k, _ in pairs(self.roster) do
       if UnitInRange(k) then
-        if addonData.util:playerCanSummon(k) then
-          lock = lock + 1
-        else
-          click = click + 1
-        end
+        table.insert(self.clickers, k)
       end
     end
-    if SteaSummonFrame then
-      --SteaSummonFrame.status:SetText(L["Warlocks"] .. " " .. lock .. "\n" .. L["Clickers"] .. " "..  click)
-    end
 
-    --addonData.summon:setClicks(lock, click)
-
-    return lock,click
+    addonData.gossip:setClicks()
   end,
 }
 

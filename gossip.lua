@@ -8,6 +8,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -----------
 -- a arrived
 -- ad add player
+-- c clicks
 -- d destination
 -- i initialize me
 -- l waiting list
@@ -22,7 +23,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- v old version
 -- version SteaSummon version Broadcast
 
-local DEFAULT_NETLIST_TIME = 30
+local DEFAULT_NETLIST_TIME = 15
 
 
 local gossip = {
@@ -46,6 +47,10 @@ local gossip = {
   destLocks = {},
   destClicks = {},
   locksCount = 0,
+  adjClicks = 0,
+  adjLocks = 0,
+  raidInfoTimer = nil,
+  clickersNagTimer = nil,
 
 
   ---------------------------------
@@ -161,8 +166,50 @@ local gossip = {
       self.netlistTimer = C_Timer.NewTimer(DEFAULT_NETLIST_TIME, self.netListTimeout)
       -- make ourselves leader temporarily so we can replay messages to the leader when network established
       table.insert(self.netList, 1, self.me)
+      if SteaSummonSave.raidinfotimer then
+        self.raidInfoTimer = addonData.monitor:create(30, self.raidInfo, false)
+      end
+      if SteaSummonSave.clickersnagtimer then
+        self.clickersNagTimer = addonData.monitor:create(30, self.clickerNag, false)
+      end
     end
     self:SteaSummonVersion()
+  end,
+
+  ---------------------------------
+  raidInfo = function(self)
+    self = addonData.gossip
+    db("gossip", "raid info")
+
+    if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
+      ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
+          (self.locksCount and self.atDestCount - self.locksCount > 2)) and
+            addonData.summon.zone ~= ""
+    then
+      addonData.chat:raid(SteaSummonSave.raidinfo, self.me)
+    end
+
+    if SteaSummonSave.raidinfotimer then
+      self.raidInfoTimer = addonData.monitor:create(SteaSummonSave.raidinfotimer * 60, self.raidInfo, false)
+    end
+  end,
+
+  ---------------------------------
+  clickerNag = function(self)
+    self = addonData.gossip
+    db("gossip", "clicker nag")
+
+    if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
+        not ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
+          (self.locksCount and self.atDestCount - self.locksCount > 2)) and
+            addonData.summon.zone ~= ""
+    then
+      addonData.chat:raid(SteaSummonSave.clickersnag, self.me)
+    end
+
+    if SteaSummonSave.clickersnagtimer then
+      self.clickersNagTimer = addonData.monitor:create(SteaSummonSave.clickersnagtimer * 60, self.clickerNag, false)
+    end
   end,
 
   ---------------------------------
@@ -209,6 +256,10 @@ local gossip = {
     self.atDest[player] = nil
     if at then
       self:updateCounts(false, player)
+    end
+    if self.locksCount == 0 and self.adjLocks == 0 then
+      addonData.summon:setDestination("","")
+      self:clicks(0,0)
     end
   end,
 
@@ -260,6 +311,10 @@ local gossip = {
           end
           db("gossip", ">> status >> ", self:groupText(), player, status)
           self:SendCommMessage(self.channel, "s " .. player .. "+" .. status, self:groupText())
+          if status == "offline" then
+            self.atDest[player] = nil
+            self:updateCounts(false, player)
+          end
         end
       end
     else
@@ -363,10 +418,12 @@ local gossip = {
   wipeCounts = function(self)
     self.atDestCount = 0
     self.locksCount = 0
+    self.adjLocks = 0
+    self.adjClicks = 0
     wipe(self.atDest)
     wipe(self.destLocks)
     wipe(self.destClicks)
-    addonData.summon:setClicks(self.locksCount, self.atDestCount - self.locksCount)
+    addonData.summon:setClicks(0, 0)
   end,
 
   ---------------------------------
@@ -398,7 +455,57 @@ local gossip = {
       end
     end
     db('gossip', "count", name, "locks", self.locksCount, "clicks", self.atDestCount - self.locksCount, "total", self.atDestCount)
-    addonData.summon:setClicks(self.locksCount, self.atDestCount - self.locksCount)
+    self:setClicks()
+  end,
+
+  ---------------------------------
+  setClicks = function(self, locks, clickers)
+    local locksCount = self.locksCount
+    local clicksCount = self.atDestCount - self.locksCount
+
+    if locks ~= nil and clickers ~= nil then
+      self.adjClicks = clickers
+      self.adjLocks = locks
+      addonData.summon:setClicks(locks, clickers)
+      return
+    end
+
+    if addonData.summon:isAtDestination() then
+      local fished = addonData.raid:fishedClickers()
+      for i,v in pairs(fished) do
+        if self.atDest[v] == nil then
+          if addonData.util:playerCanSummon(v) then
+            locksCount = locksCount + 1
+          else
+            clicksCount = clicksCount + 1
+          end
+        end
+      end
+      db('gossip', "fished adjusted count: locks", locksCount, "clicks", clicksCount, "total", locksCount + clicksCount)
+      self.adjLocks = locksCount
+      self.adjClicks = clicksCount
+      self:clicks(locksCount, clicksCount)
+    end
+  end,
+
+  ---------------------------------
+  clicks = function(self, locks, clickers)
+    if self:isLeader() then
+      self.adjClicks = clickers
+      self.adjLocks = locks
+
+      db("gossip", ">> clickers >>", self:groupText(), locks, clickers)
+      if not self:noComms() then
+        self:SendCommMessage(self.channel, "c " .. locks .. "+" .. clickers, self:groupText())
+      end
+      self:setClicks(locks, clickers)
+    else
+      if self:noComms() then
+        return
+      end
+      db("gossip", ">> clickers >> WHISPER", self:groupText(), self.netList[1], locks, clickers)
+      self:SendCommMessage(self.channel, "c " .. locks .. "+" .. clickers, "WHISPER", self.netList[1])
+    end
   end,
 
   ---------------------------------
@@ -552,6 +659,17 @@ local gossip = {
         addonData.summon:showSummons()
       end
 
+      --- clickers
+    elseif cmd == "c" then
+      local locks, clickers = strsplit("+", subcmd)
+      db("gossip", "<< clickers <<", locks, clickers)
+
+      if self:isLeader() then
+        self:clicks(locks, clickers)
+      else
+        self:setClicks(locks, clickers)
+      end
+
       --- initialize
     elseif cmd == "i" then
       -- initialize requestor, if deputy init leader when they /reload
@@ -638,6 +756,10 @@ local gossip = {
         self:status(player, status)
       else
         addonData.summon:status(player, status)
+        if status == "offline" then
+          self.atDest[player] = nil
+          self:updateCounts(false, player)
+        end
       end
 
       --- netgroup list

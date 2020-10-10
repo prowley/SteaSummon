@@ -90,6 +90,7 @@ function loaded(_, event, ...)
     -- otherwise the category or its children may not be registered for chat debug messages
     addonData.debug:chatCat("summon.waitlist")
     addonData.debug:chatCat("summon.spellcast")
+    addonData.debug:chatCat("summon.display")
     addonData.debug:chatCat("gossip")
     addonData.debug:chatCat("buffs")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output

@@ -43,7 +43,7 @@ local chat = {
             cprint(s)
             count = count + 1
           end
-          
+
           local pats = {["%%count"] = count}
           local s = L["%count waiting"]
           s = tstring(s, pats)
@@ -107,7 +107,16 @@ local chat = {
     db("chat", "sendChat ", msg, " ", channel, " ", to)
     if msg ~= nil and msg ~= "" then
       -- substitute variables in message
-      local patterns = {["%%p"] = to, ["%%l"] = GetMinimapZoneText(), ["%%z"] = GetZoneText()}
+      local trigphrase = SteaSummonSave.summonWords[1]
+      if trigphrase == nil then
+        trigphrase = ""
+      end
+
+      local patterns = {["%%p"] = to,
+                        ["%%l"] = GetMinimapZoneText(),
+                        ["%%z"] = GetZoneText(),
+                        ["%%t"] = trigphrase
+      }
       msg = tstring(msg, patterns)
       msg = "[SteaSummon] " .. msg
       SendChatMessage(msg,channel,channel2,to)
