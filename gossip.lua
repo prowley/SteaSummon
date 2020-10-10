@@ -23,7 +23,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- v old version
 -- version SteaSummon version Broadcast
 
-local DEFAULT_NETLIST_TIME = 30
+local DEFAULT_NETLIST_TIME = 15
 
 
 local gossip = {

@@ -462,6 +462,7 @@ local advanced = {
       type = "header",
       name = L["Version Details"]
     },
+
     build = {
       order = 11,
       type = "description",
@@ -472,9 +473,46 @@ local advanced = {
         return tstring(s, pat)
       end
     },
+    --[[bags = {
+      order = -1,
+      name = "bags",
+      desc = "bags",
+      type = "input",
+      multiline = 23,
+      width = "full",
+      set = function(_, val)
+
+      end,
+      get = function()
+        return rummage()
+      end
+    }]]
   },
 }
 
+--- rummage for food and drink
+function rummage()
+  out = ""
+  local icon, itemCount, locked, quality, readable, lootable,
+        isFiltered, noValue, itemID
+  local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount,
+        itemEquipLoc, itemIcon, itemSellPrice, itemClassID, itemSubClassID, bindType, expacID, itemSetID,
+        isCraftingReagent
+  for bag = 0, NUM_BAG_SLOTS do
+    for slot = 1, GetContainerNumSlots(bag) do
+      icon, itemCount, locked, quality, readable, lootable,
+        itemLink, isFiltered, noValue, itemID = GetContainerItemInfo(bag, slot)
+      if itemID then
+        itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount,
+        itemEquipLoc, itemIcon, itemSellPrice, itemClassID, itemSubClassID, bindType, expacID, itemSetID,
+        isCraftingReagent = GetItemInfo(itemID)
+        out = out .. itemName .. " " .. itemID .. " " ..  itemType .. " " .. itemSubType .. " " .. itemClassID
+            .. " " .. itemSubClassID .. " " .. itemIcon .. "\n"
+      end
+    end
+  end
+  return out
+end
 
 function optionsgui.init()
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummon", optionsgui.options)

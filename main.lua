@@ -1,8 +1,5 @@
 -- set things going
 
--- TODO: add click nag button
--- TODO: add raid instructions
--- TODO: add more clickers nag
 -- TODO: add type down search of list
 -- TODO: add sound when next button pops
 -- TODO: offline on alt support
