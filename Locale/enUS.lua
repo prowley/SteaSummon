@@ -23,6 +23,9 @@ L["Clickers"] = true
 L["Summoning %p"] = true
 L["Summoning you to %l in %z"] = true
 L["Summoning %p, please click the portal"] = true
+L["raidinfo"] = "Summons are available. Type %t for summons, -%t to cancel, %t to reset to requested on summon failure"
+L["clickersnag"] = "Need more clickers at %l, %z"
+L["clicknag"] = "Click the summoning portal!"
 
 -- summon.lua
 L["Warlock"] = true
@@ -47,6 +50,16 @@ L["Destination: %subzone, %zone"] = true
 L["Next"] = true
 
 -- optionsgui.lua
+L["Raid summon instructions"] = true
+L["a sentence that that posts to raid periodically"] = true
+L["Raid request for clickers"] = true
+L["a sentence that that posts to raid periodically when there not enough clickers to summon"] = true
+L["Summoning portal click nag"] = true
+L["a sentence that posts to say when you click the Next button while casting"] = true
+L["Raid summon instructions period (minutes)"] = true
+L["How long to wait between sending to chat"] = true
+L["Raid clicker request period (minutes)"] = true
+L["Say clicker request period (seconds)"] = true
 L["Maximum warlocks first"] = true
 L["Maximum summoners to be prioritized"] = true
 L["One button summoning, shared summoning list...    (Options for: %name)"] = true
@@ -70,7 +83,7 @@ L["Summon list scale"] = true
 L["sumscale"] = "Changes the scale of the window contents. It helps to have show always set to see the effect while setting."
 L["Messages"] = true
 L["Message Options"] = true
-L["msgopdesc"] = "These message options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone"
+L["msgopdesc"] = "These message options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone\n%t : the first trigger phrase"
 L["Summon raid notification text"] = true
 L["a sentence that posts to raid when someone is summoned"] = true
 L["Summon whisper notification text"] = true
@@ -78,6 +91,7 @@ L["a sentence that is whispered to the person being summoned"] = true
 L["Summon portal click request in say"] = true
 L["a sentence that posts to say to request others click on the portal"] = true
 L["Trigger Phrases"] = true
+L["Triggers"] = true
 L["trigphrasedesc"] = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list. Players can also type '-' (minus) and then a trigger phrase to be removed from the list."
 L["Trigger phrases for summon. One per line."] = true
 L["chat lines that will add a summon request for the raider"] = true

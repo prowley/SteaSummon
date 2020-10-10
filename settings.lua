@@ -67,6 +67,15 @@ settings = {
     if SteaSummonSave.maxLocks == nil then
       SteaSummonSave.maxLocks = 2
     end
+
+    if SteaSummonSave.raidinfo == nil then
+      SteaSummonSave.raidinfo = L["raidinfo"]
+      SteaSummonSave.clickersnag = L["clickersnag"]
+      SteaSummonSave.clicknag = L["clicknag"]
+      SteaSummonSave.clickersnagtimer = 1
+      SteaSummonSave.raidinfotimer = 2
+      SteaSummonSave.clicknagtimer = 10
+    end
   end,
 
   reset = function()
@@ -93,6 +102,12 @@ settings = {
     SteaSummonSave.buffs = true
     SteaSummonSave.windowPos = {"CENTER", nil, "CENTER", 0, 0, ["height"] = 300, ["width"] = 250}
     SteaSummonSave.maxLocks = 2
+    SteaSummonSave.raidinfo = L["raidinfo"]
+    SteaSummonSave.clickersnag = L["clickersnag"]
+    SteaSummonSave.clicknag = L["clicknag"]
+    SteaSummonSave.clickersnagtimer = 1
+    SteaSummonSave.raidinfotimer = 2
+    SteaSummonSave.clicknagtimer = 10
   end,
 
   saveOnLogout = function(self, event, ...)

@@ -2,7 +2,7 @@
 
 local _, addonData = ...
 
-local LONG_TIME = 2
+local LONG_TIME = 30
 local SHORT_TIME = 0.5
 local SECOND_TIME = 1
 
@@ -10,6 +10,7 @@ local monitor = {
   second_t = {},
   short_t = {},
   long_t = {},
+  isStarted = true,
 
   init = function(self)
     addonData.debug:registerCategory("monitor")
@@ -17,41 +18,42 @@ local monitor = {
     self.long_t = self:create(LONG_TIME, self.callback_long)
     self.second_t = self:create(SECOND_TIME, self.callback_sec)
     self:start()
-    self.long_t:Play()
   end,
 
   create = function(_, i, callback, timerRepeat)
     local timer
-    local loopType = "REPEAT"
 
     if timerRepeat == nil then
       timerRepeat = true
     end
 
-    if not timerRepeat then
-      loopType = "NONE"
-    end
-
-    timer = frame:CreateAnimationGroup()
-    timer.anim = timer:CreateAnimation()
-    timer.anim:SetDuration(i)
-    timer:SetLooping(loopType)
     if timerRepeat then
-      timer:SetScript("OnLoop", callback)
+      timer = C_Timer.NewTicker(i, callback)
     else
-      timer:SetScript("OnFinished", callback)
+      timer = C_Timer.NewTimer(i, callback)
     end
+    timer.i = i
+    timer.callback = callback
+    timer.timerRepeat = timerRepeat
     return timer
   end,
 
   start = function(self)
-    self.short_t:Play()
-    self.second_t:Play()
+    if not self.isStarted then
+      self.short_t = self:create(SHORT_TIME, self.callback_short)
+      self.second_t = self:create(SECOND_TIME, self.callback_sec)
+      self.isStarted = true
+    end
   end,
 
   stop = function(self)
-    self.short_t:Stop()
-    self.second_t:Stop()
+    if not self.short_t:IsCancelled() then
+      self.short_t:Cancel()
+    end
+    if not self.second_t:IsCancelled() then
+      self.second_t:Cancel()
+    end
+    self.isStarted = false
   end,
 
   callback_short = function()
