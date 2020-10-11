@@ -22,6 +22,8 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- edone election result
 -- v old version
 -- version SteaSummon version Broadcast
+-- alt alt list for player
+-- wsp player alt whispered
 
 local DEFAULT_NETLIST_TIME = 15
 
@@ -144,7 +146,7 @@ local gossip = {
       return
     end
 
-    local msg = "netlist " .. addonData.util:tableToMultiLine(self.netList)
+    local msg = "netlist " .. addonData.util:tableToMultiLine(self.netList, "\n")
     db("gossip", ">> netlist send >> WHISPER", player)
     self:SendCommMessage(self.channel, msg, "WHISPER", player)
   end,
@@ -179,13 +181,13 @@ local gossip = {
   ---------------------------------
   raidInfo = function(self)
     self = addonData.gossip
-    db("gossip", "raid info")
 
     if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
       ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
           (self.locksCount and self.atDestCount - self.locksCount > 2)) and
             addonData.summon.zone ~= ""
     then
+      db("gossip", "raid info")
       addonData.chat:raid(SteaSummonSave.raidinfo, self.me)
     end
 
@@ -196,14 +198,14 @@ local gossip = {
 
   ---------------------------------
   clickerNag = function(self)
+    -- TODO: instance check and option, obvious way to turn it off from the window
     self = addonData.gossip
-    db("gossip", "clicker nag")
-
     if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
         not ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
           (self.locksCount and self.atDestCount - self.locksCount > 2)) and
             addonData.summon.zone ~= ""
     then
+      db("gossip", "clicker nag")
       addonData.chat:raid(SteaSummonSave.clickersnag, self.me)
     end
 
@@ -218,10 +220,11 @@ local gossip = {
     for i,v in pairs(self.netList) do
       if not UnitIsConnected(v) then
         table.insert(killList, 1, i)
+        db("gossip", v, "is offline without notification, removing from list pos", i)
       end
     end
 
-    for _, v in pairs(killList) do
+    for i, v in pairs(killList) do
       table.remove(self.netList, v)
     end
   end,
@@ -338,6 +341,7 @@ local gossip = {
         end
         db("gossip", ">> arrived >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "a " .. player, self:groupText())
+        addonData.alt:listShorter()
       end
     else
       if self:noComms() then
@@ -363,10 +367,12 @@ local gossip = {
         local rec = addonData.summon:recMarshal(addonData.summon.waiting[idx])
         db("gossip", ">> adrec >>", self:groupText(), player)
         self:SendCommMessage(self.channel, "adrec " .. tostring(idx) .. "_" .. rec, self:groupText())
+        addonData.alt:newPlayer(player)
       else
         addonData.summon:addWaiting(player, true)
         self:status(player, "requested")
       end
+      addonData.alt:askForAlts(player)
     else
       if self:noComms() then
         return
@@ -375,6 +381,51 @@ local gossip = {
         db("gossip", ">> add >> WHISPER", self.netList[1], player)
         self:SendCommMessage(self.channel, "ad " .. player, "WHISPER", self.netList[1])
       end
+    end
+  end,
+
+  ---------------------------------
+  altBoost = function(self)
+    if self:isLeader() then
+      addonData.alt:listBoost()
+    end
+  end,
+
+  ---------------------------------
+  alts = function(self, player, playeralts, isWhisper)
+    self:offlineCheck()
+    local alts
+
+    if self:isLeader() then
+      local rec = addonData.summon:findWaitingPlayer(player)
+      if rec then
+        alts = addonData.summon:marshallAlts(addonData.summon:recMergeAlts(rec, playeralts))
+
+        if self:noComms() then
+          return
+        end
+
+        db("gossip", ">> alt >>", self:groupText(), player, alts)
+        self:SendCommMessage(self.channel, "alt " .. player .. "+" .. alts, self:groupText())
+      end
+    else
+      if self:noComms() then
+        return
+      end
+      if isWhisper or self.inInit then
+        alts = addonData.summon:marshallAlts(playeralts)
+        db("gossip", ">> alts >> WHISPER", self.netList[1], player, alts)
+        self:SendCommMessage(self.channel, "alt " .. player .. "+" .. alts, "WHISPER", self.netList[1])
+      end
+    end
+  end,
+
+  ---------------------------------
+  altWhispered = function(self, player, alt)
+    local rec = addonData.summon:findWaitingPlayer(player)
+
+    if self:isLeader() then
+      self:SendCommMessage(self.channel, "wsp " .. player .. "+" .. alt, self:groupText())
     end
   end,
 
@@ -472,7 +523,7 @@ local gossip = {
 
     if addonData.summon:isAtDestination() then
       local fished = addonData.raid:fishedClickers()
-      for i,v in pairs(fished) do
+      for _,v in pairs(fished) do
         if self.atDest[v] == nil then
           if addonData.util:playerCanSummon(v) then
             locksCount = locksCount + 1
@@ -656,6 +707,7 @@ local gossip = {
       local ununmarshalledRec = addonData.summon:recUnMarshal(rec)
       if not addonData.summon:findWaitingPlayer(addonData.summon:recPlayer(ununmarshalledRec)) then
         addonData.summon:recAdd(ununmarshalledRec, tonumber(i))
+        addonData.alt:newPlayer(addonData.summon:recPlayer(ununmarshalledRec))
         addonData.summon:showSummons()
       end
 
@@ -677,7 +729,7 @@ local gossip = {
         db("gossip", "<< initialize request <<")
         if addonData.summon.numwaiting then
           local data = addonData.util:marshalWaitingTable()
-          local dl = addonData.util:tableToMultiLine(self.atDest)
+          local dl = addonData.util:tableToMultiLine(self.atDest, "\n")
           db("gossip", ">> initialize reply >>")
           -- first set their destination
           self:destination(addonData.summon.zone, addonData.summon.location, nil, sender)
@@ -690,8 +742,36 @@ local gossip = {
         end
       end
 
+      --- alt list
+    elseif cmd == "alt" then
+      db("gossip", "<< alt list <<", sender)
+      local player, altmarshalled = strsplit("+", subcmd)
+      local alts = addonData.summon:unmarshallAlts(altmarshalled)
+      db("gossip", player, alts)
+
+      if self:isLeader() then
+        self:alt(player, alts)
+      else
+        local rec = addonData.summon:findWaitingPlayer(player)
+        if rec then
+          addonData.summon:recMergeAlts(rec, alts)
+        end
+      end
+
+      --- alt whispered
+    elseif cmd == "wsp" then
+      db("gossip", "<< alt whispered <<", sender)
+      local player, alt = strsplit("+", subcmd)
+      local rec = addonData.summon:findWaitingPlayer(player)
+      if rec then
+        addonData.summon:recAltWhispered(rec, alt)
+      end
+
       --- leave netgroup (turned off comms or had a bad version)
     elseif cmd == "retire" then
+      if sender == self.me then
+        db("gossip", "ignoring my own retire from before reload")
+      end
       if self.inInit then
         return -- group messages get saved up on reload...
       end
@@ -701,7 +781,7 @@ local gossip = {
       --- destination list
     elseif cmd == "dl" then
       db("gossip", "<< at destination list <<")
-      self.atDest = addonData.util:multiLineToMap(subcmd)
+      self.atDest = addonData.util:multiLineToMap(subcmd, "\n")
       self.atDestCount = 0
       self.locksCount = 0
       for i,_ in pairs(self.atDest) do
@@ -764,8 +844,12 @@ local gossip = {
 
       --- netgroup list
     elseif cmd == "netlist" then
-      db("gossip", "<< netlist <<")
-      self.netList = addonData.util:multiLineToTable(subcmd)
+      db("gossip", "<< netlist <<", sender)
+      if sender == self.me then -- on replay
+        db("gossip", "ignored netlist from myself")
+        return
+      end
+      self.netList = addonData.util:multiLineToTable(subcmd, "\n")
       if self.inInit then
         -- 2. if within 5 seconds a network list is received, request initialize from leader
         self.inInit = false
@@ -784,7 +868,11 @@ local gossip = {
 
       --- request for netgroup list
     elseif cmd == "netreq" then
-      db("gossip", "<< netreq <<")
+      if sender == self.me then -- on replay
+        db("gossip", "ignored netreq from myself")
+        return
+      end
+      db("gossip", "<< netreq <<", sender)
       -- 4. if while waiting for network list, you receive a request for the network list,
       -- whisper election and add the requester to the voting list,
       local votes, version = strsplit("+", subcmd)
@@ -848,6 +936,10 @@ local gossip = {
 
       --- SteaSummon version broadcast GUILD
     elseif cmd=="version" then
+      if sender == self.me then -- on replay
+        db("gossip", "ignored version request from myself")
+        return
+      end
       db("gossip", "<< version <<", sender)
       local reported_version = tonumber(subcmd)
       db("gossip", "my version:", self.SSversion, sender, "version:", reported_version)
@@ -859,6 +951,8 @@ local gossip = {
         self.SSversion_notified = true
         cprint(L["There is a newer version available."])
       end
+    else
+      db("gossip", "Unknown protocol command received:", cmd)
     end
   end
 }

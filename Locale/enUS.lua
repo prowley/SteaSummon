@@ -26,6 +26,8 @@ L["Summoning %p, please click the portal"] = true
 L["raidinfo"] = "Summons are available. Type %t for summons, -%t to cancel, %t to reset to requested on summon failure"
 L["clickersnag"] = "Need more clickers at %l, %z"
 L["clicknag"] = "Click the summoning portal!"
+L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."] = true
+L["You are near the top of the summon queue. Get online now."] = true
 
 -- summon.lua
 L["Warlock"] = true
@@ -48,6 +50,7 @@ L["summoned"] = true
 L["Location: %subzone, %zone"] = true
 L["Destination: %subzone, %zone"] = true
 L["Next"] = true
+L["Alt:"] = true
 
 -- optionsgui.lua
 L["Raid summon instructions"] = true
@@ -119,6 +122,23 @@ L["Use AddOn Broadcast Communications"] = true
 L["broadcastdesc"] = "Get and send summoning status updates. Gives you notifications of summon status changes, and helps to keep the summoning list alive through relogs. Makes the Next button more effective with multiple warlock summoners i.e. please don't turn this off."
 L["Version Details"] = true
 L["SteaSummon version %s\n\nWoW client\nversion: %v\nbuild: %b\ndate: %d\ntocversion: %t"] = true
+L["Alt Support"] = true
+L["Alt Character Options"] = true
+L["altdesc"] = "These options allow players to log on another character while waiting for their summon to be ready."
+L["Enable only when player buffed"] = true
+L["altbuffeddesc"] = "Alt support only triggers the instructional whisper when the player is buffed (all players can still use alt support)"
+L["Enable only when the queue spot reaches"] = true
+L["qspotdesc"] = "Alt support only triggers the instructional whisper when the player is at or lower in the queue than this value"
+L["Whisper alts when they reach this queue spot"] = true
+L["Automatically register your characters for alt support"] = true
+L["These are the characters you might be on when your summon is ready"] = true
+L["qspotreadydesc"] = "Alt support only triggers ready whisper when the player reaches this spot in the queue"
+L["When out of online players to summon, whisper this many extra alts"] = true
+L["qspotboostreadydesc"] = "Raise players from their alts to keep summons going"
+L["Whisper instructional text"] = true
+L["a sentence that is whispered to instruct the player how to add an alt for their summon"] = true
+L["Whisper summon ready text"] = true
+L["a sentence that is whispered to tell an alt their summon is ready"] = true
 
 -- gossip.lua
 L["There is a newer version available."] = true

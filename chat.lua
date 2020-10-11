@@ -83,6 +83,8 @@ local chat = {
         if IsInGroup(player) or (player == me and settings:debug()) then
           gossip:add(player, event == "CHAT_MSG_WHISPER" )
         end
+      elseif event == "CHAT_MSG_WHISPER" then
+        addonData.alt:whispered(player, msg)
       end
     end
   end,

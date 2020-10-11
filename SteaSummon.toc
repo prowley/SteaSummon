@@ -19,6 +19,7 @@ raid.lua
 summon.lua
 monitor.lua
 chat.lua
+alt.lua
 events.lua
 main.lua
 

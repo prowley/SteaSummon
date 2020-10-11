@@ -72,9 +72,19 @@ settings = {
       SteaSummonSave.raidinfo = L["raidinfo"]
       SteaSummonSave.clickersnag = L["clickersnag"]
       SteaSummonSave.clicknag = L["clicknag"]
-      SteaSummonSave.clickersnagtimer = 1
-      SteaSummonSave.raidinfotimer = 2
+      SteaSummonSave.clickersnagtimer = 5
+      SteaSummonSave.raidinfotimer = 5
       SteaSummonSave.clicknagtimer = 10
+    end
+
+    if SteaSummonSave.altbuffed == nil then
+      SteaSummonSave.altbuffed = true
+      SteaSummonSave.qspot = 2
+      SteaSummonSave.initialQspot = 6
+      SteaSummonSave.alttoons = {}
+      SteaSummonSave.qboost = 2
+      SteaSummonSave.altWhisper = L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."]
+      SteaSummonSave.altGetOnlineWhisper = L["You are near the top of the summon queue. Get online now."]
     end
   end,
 
@@ -108,6 +118,13 @@ settings = {
     SteaSummonSave.clickersnagtimer = 1
     SteaSummonSave.raidinfotimer = 2
     SteaSummonSave.clicknagtimer = 10
+    SteaSummonSave.altbuffed = true
+    SteaSummonSave.qspot = 2
+    SteaSummonSave.initialQspot = 6
+    SteaSummonSave.alttoons = {}
+    SteaSummonSave.qboost = 4
+    SteaSummonSave.altWhisper = L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."]
+    SteaSummonSave.altGetOnlineWhisper = L["You are near the top of the summon queue. Get online now."]
   end,
 
   saveOnLogout = function(self, event, ...)

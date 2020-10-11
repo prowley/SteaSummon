@@ -48,7 +48,7 @@ local summon = {
     -- there seems to be no good event/time to check if we are in a group
     -- group roster changes fail to tell us when we are NOT in a group
     -- so we're gonna bodge this one
-    C_Timer.After(1, self.postInitSetup)
+    C_Timer.After(4, self.postInitSetup)
   end,
 
   ---------------------------------
@@ -88,7 +88,6 @@ local summon = {
     self.localClickers = tonumber(clicks)
     if SteaSummonFrame then
       if IsInGroup(LE_PARTY_CATEGORY_HOME) and self.location ~= "" and self.zone ~= nil then
-        local color = ""
         if self.localLocks and self.localLocks + self.localClickers > 2 then
           SteaSummonFrame.status:SetTextColor(0,1,0,.5)
         else
@@ -117,11 +116,12 @@ local summon = {
   end,
 
   ---------------------------------
-  waitRecord = function(self, player, time, status, prioReason)
+  waitRecord = function(self, player, time, status, prioReason, buffs, alts, altwhispered)
     local rec
-    rec = {player, time, status, prioReason, true}
+    rec = {player, time, status, prioReason, true, buffs or {}, alts or {}, altwhispered or ""}
     db("summon.waitlist.record","Created record {",
-        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true, "}")
+        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true,
+        self:recBuffs(rec), self:recAlts(rec), self:recAltWhispered(rec), "}")
 
     return rec
   end,
@@ -133,14 +133,17 @@ local summon = {
         .. "+" .. self:recStatus(rec)
         .. "+" .. self:recPrio(rec)
         .. "+" .. addonData.buffs:marshallBuffs(self:recBuffs(rec))
+        .. "+" .. self:recMarshallAlts(rec)
+        .. "+" .. self:recAltWhispered(rec)
   end,
 
   ---------------------------------
   recUnMarshal = function(self, data)
     if data then
-      local player, time, status, prio, buffs = strsplit("+", data)
-      if player and time and status and prio and buffs then
-        return self:waitRecord(player, time, status, prio, addonData.buffs:unmarshallBuffs(buffs))
+      local player, time, status, prio, buffs, alts, altwhispered = strsplit("+", data)
+      if player and time and status and prio and buffs and alts and altwhispered then
+        return self:waitRecord(player, time, status, prio, addonData.buffs:unmarshallBuffs(buffs),
+            self:unmarshallAlts(alts), altwhispered)
       else
         db("summon.waitlist.record", "unmarshalled data contains nil", player, time, status, prio, buffs)
       end
@@ -215,6 +218,87 @@ local summon = {
       rec[6] = val
     end
     return rec[6] or {}
+  end,
+
+  ---------------------------------
+  recAlts = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record alts value:", val)
+      rec[7] = {}
+      rec[7] = self:recMergeAlts(rec, val) -- duplicate proof add
+    end
+    return rec[7] or {}
+  end,
+
+  ---------------------------------
+  marshallAlts = function(_, alts)
+    local out = ""
+    local spacer = ""
+    for _,v in pairs(alts) do
+      out = out .. spacer .. v
+      spacer = "&"
+    end
+    return out
+  end,
+
+  ---------------------------------
+  recMarshallAlts = function(self, rec)
+    return self:marshallAlts(rec[7])
+  end,
+
+  ---------------------------------
+  unmarshallAlts = function(_, marshalled)
+    local out = {}
+    local tmpOut = { strsplit("&", marshalled) }
+    for i,v in pairs(tmpOut) do
+      out[i] = v
+    end
+    return out
+  end,
+
+  ---------------------------------
+  recMergeAlts = function(_, rec, alts)
+    db("summon.waitlist.record","merging alts:", alts)
+    local out = {}
+    local oldAlts = rec[7] or {}
+    local newAlts = {}
+    local altMap = {} -- for duplicates in new map
+    local newIdx = 1
+
+    for _,alt in pairs(alts) do
+      if not altMap[alt] then
+        local add = true
+        for _,oldAlt in pairs(oldAlts) do
+          if alt == oldAlt then
+            add = false
+            break
+          end
+          if add then
+            altMap[alt] = true
+            newAlts[newIdx] = alt
+            newIdx = newIdx + 1
+          end
+        end
+      end
+    end
+
+    for _,v in pairs(newAlts) do
+      table.insert(oldAlts, v)
+    end
+
+    rec[7] = oldAlts -- in case we made it
+    return rec[7]
+  end,
+
+  ---------------------------------
+  recAltWhispered = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record alt whispered:", val)
+      rec[8] = val
+    end
+    return rec[8]
   end,
 
   ---------------------------------
@@ -355,10 +439,14 @@ local summon = {
       self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
+    local rec = self:findWaitingPlayer(player)
+    self:recBuffs(rec, buffs)
+
     db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
   end,
 
+  ---------------------------------
   timerSecondTick = function(self)
     --- update timers
     -- yea this is dumb, but time doesnt really work in wow
@@ -744,9 +832,12 @@ local summon = {
           end
         end
 
-        if not next and not self.isCasting then
-          -- all summons left are pending, disable the next button
-          addonData.buttons[38].Button:Hide()
+        if not next then
+          addonData.gossip:altBoost()
+          if not self.isCasting then
+            -- all summons left are pending, disable the next button
+            addonData.buttons[38].Button:Hide()
+          end
         end
       end -- skip visual updates
 
@@ -1329,7 +1420,7 @@ local summon = {
         self:shardIncrementBy(-1)
       end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" or
-      event == "UNIT_SPELLCAST_START" then
+        event == "UNIT_SPELLCAST_START" then
       if spellId == 698 then
         self.isCasting = true
       end

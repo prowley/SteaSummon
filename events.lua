@@ -85,6 +85,7 @@ function loaded(_, event, ...)
     addonData.chat:init()
     addonData.util:init()
     addonData.buffs:init()
+    addonData.alt:init()
 
     -- wait to set up debug categories until all categories are registered
     -- otherwise the category or its children may not be registered for chat debug messages
@@ -92,6 +93,7 @@ function loaded(_, event, ...)
     addonData.debug:chatCat("summon.spellcast")
     addonData.debug:chatCat("summon.display")
     addonData.debug:chatCat("gossip")
+    addonData.debug:chatCat("alt")
     addonData.debug:chatCat("buffs")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
