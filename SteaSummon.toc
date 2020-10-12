@@ -2,7 +2,7 @@
 ## Title: SteaSummon
 ## Notes: One button summoning, shared summoning list...
 ## Author: Stea
-## Version: 0.58
+## Version: 0.59
 ## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG
 ## x-SteaSummon-Protocol-version: 0.5
 
