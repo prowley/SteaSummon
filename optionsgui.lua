@@ -293,7 +293,7 @@ local summonwords = {
         SteaSummonSave.summonWords = addonData.util:multiLineToTable(val)
       end,
       get = function()
-        return addonData.util:tableToMultiLine(SteaSummonSave.summonWords)
+        return addonData.util:tableToMultiLine(SteaSummonSave.summonWords, "\n")
       end
     }
   }
@@ -389,6 +389,126 @@ local priorities = {
         return addonData.util:tableToMultiLine(SteaSummonSave.shitlist)
       end
     }
+  },
+}
+
+local alts = {
+  name = L["Alt Support"],
+  type = "group",
+  order = 6,
+  args = {
+    header = {
+      order = 0,
+      type = "header",
+      name = L["Alt Character Options"]
+    },
+    desc = {
+      order = 1,
+      type = "description",
+      name = L["altdesc"]
+    },
+    buffed = {
+      order = 2,
+      name = L["Enable only when player buffed"],
+      desc = L["altbuffeddesc"],
+      type = "toggle",
+      width = "full",
+      descStyle = "inline",
+      set = function(_, val)
+        SteaSummonSave.altbuffed = val
+      end,
+      get = function()
+        return SteaSummonSave.altbuffed
+      end
+    },
+    q = {
+      order = 3,
+      name = L["Enable only when the queue spot reaches"],
+      desc = L["qspotdesc"],
+      type = "range",
+      width = "full",
+      min = 2,
+      max = 41,
+      step = 1,
+      set = function(_, val)
+        SteaSummonSave.initialQspot = val
+      end,
+      get = function()
+        return SteaSummonSave.initialQspot
+      end
+    },
+    whisper = {
+      order = 4,
+      name = L["Whisper alts when they reach this queue spot"],
+      desc = L["qspotreadydesc"],
+      type = "range",
+      width = "full",
+      min = 0,
+      max = 41,
+      step = 1,
+      set = function(_, val)
+        SteaSummonSave.qspot = val
+      end,
+      get = function()
+        return SteaSummonSave.qspot
+      end
+    },
+    whisperBoost = {
+      order = 5,
+      name = L["When out of online players to summon, whisper this many extra alts"],
+      desc = L["qspotboostreadydesc"],
+      type = "range",
+      width = "full",
+      min = 0,
+      max = 10,
+      step = 1,
+      set = function(_, val)
+        SteaSummonSave.qboost = val
+      end,
+      get = function()
+        return SteaSummonSave.qboost
+      end
+    },
+    instrwhisper = {
+      order = 11,
+      name = L["Whisper instructional text"],
+      desc = L["a sentence that is whispered to instruct the player how to add an alt for their summon"],
+      type = "input",
+      width = "full",
+      set = function(_, val)
+        SteaSummonSave.altWhisper = val
+      end,
+      get = function()
+        return SteaSummonSave.altWhisper
+      end
+    },
+    getonlinewhisper = {
+      order = 11,
+      name = L["Whisper summon ready text"],
+      desc = L["a sentence that is whispered to tell an alt their summon is ready"],
+      type = "input",
+      width = "full",
+      set = function(_, val)
+        SteaSummonSave.altGetOnlineWhisper = val
+      end,
+      get = function()
+        return SteaSummonSave.altGetOnlineWhisper
+      end
+    },
+    toons = {
+      order = 7,
+      name = L["Automatically register your characters for alt support"],
+      desc = L["These are the characters you might be on when your summon is ready"],
+      width = "full",
+      type = "input",
+      multiline = 5,
+      set = function(_, val)
+        SteaSummonSave.alttoons = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
+      end,
+      get = function()
+        return addonData.util:tableToMultiLine(SteaSummonSave.alttoons)
+      end
+    },
   },
 }
 
@@ -515,16 +635,21 @@ function rummage()
 end
 
 function optionsgui.init()
-  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummon", optionsgui.options, "ss")
-  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonMessages", chat, "sschat")
-  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonWords", summonwords, "sswords")
-  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonPrios", priorities, "ssprio")
+  local me = UnitName("player")
+  local name = "SteaSummon (" .. me .. ")"
+
+  LibStub("AceConfig-3.0"):RegisterOptionsTable(name, optionsgui.options, "ss")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonMessages", chat, "ss-chat")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonWords", summonwords, "ss-words")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonPrios", priorities, "ss-prio")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAlts", alts, "ss-alts")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAdv", advanced)
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAdv", L["Advanced"], "SteaSummon")
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions(name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAlts", L["Alt Support"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAdv", L["Advanced"], name)
 end
 
 

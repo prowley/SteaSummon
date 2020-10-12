@@ -23,10 +23,12 @@ local summon = {
     ["Warlock"] = L["W"],
     ["Buffed"] = L["B"],
     ["Normal"] = L["N"],
+    ["Prioritized"] = L["P"],
     ["Last"] = L["L"]
   },
   localLocks = 0,
   localClickers = 0,
+  needBoost = false,
 
   ---------------------------------
   init = function(self)
@@ -47,8 +49,8 @@ local summon = {
 
     -- there seems to be no good event/time to check if we are in a group
     -- group roster changes fail to tell us when we are NOT in a group
-    -- so we're gonna bodge this one
-    C_Timer.After(1, self.postInitSetup)
+    -- so we're gonna bodge this one, worst case is it takes a while to clear the list
+    C_Timer.After(10, self.postInitSetup) -- bumped to 10 seconds, after laggy server experiences, an eternity I know
   end,
 
   ---------------------------------
@@ -62,23 +64,20 @@ local summon = {
     end
     self.postInit = false
 
-    -- sanity debug
-    for i,v in pairs(SteaSummonSave.waiting) do
-      db("waitlist", i, v)
-    end
-
     local ts = GetTime()
 
     if not IsInGroup(LE_PARTY_CATEGORY_HOME)
         or SteaSummonSave.waitingKeepTime == 0
-        or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
+        or ts - 10 - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then -- -10 for the bodge factor
       db("wiping wait list")
-      db("saved mins", (ts - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
+      db("saved mins", (ts - 10 - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       self:listClear()
+    else
+      addonData.gossip:raidJoined()
     end
 
-    -- good time for a version check
+    -- good time for a version check -- this goes to guild if not in raid
     addonData.gossip:SteaSummonVersion()
   end,
 
@@ -88,7 +87,6 @@ local summon = {
     self.localClickers = tonumber(clicks)
     if SteaSummonFrame then
       if IsInGroup(LE_PARTY_CATEGORY_HOME) and self.location ~= "" and self.zone ~= nil then
-        local color = ""
         if self.localLocks and self.localLocks + self.localClickers > 2 then
           SteaSummonFrame.status:SetTextColor(0,1,0,.5)
         else
@@ -113,15 +111,17 @@ local summon = {
     if dirty ~= nil then
       self.dirty = dirty
     end
+    addonData.monitor:start()
     return self.dirty
   end,
 
   ---------------------------------
-  waitRecord = function(self, player, time, status, prioReason)
+  waitRecord = function(self, player, time, status, prioReason, buffs, alts, altwhispered)
     local rec
-    rec = {player, time, status, prioReason, true}
+    rec = {player, time, status, prioReason, true, buffs or {}, alts or {}, altwhispered or ""}
     db("summon.waitlist.record","Created record {",
-        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true, "}")
+        self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true,
+        self:recBuffs(rec), self:recAlts(rec), self:recAltWhispered(rec), "}")
 
     return rec
   end,
@@ -133,14 +133,17 @@ local summon = {
         .. "+" .. self:recStatus(rec)
         .. "+" .. self:recPrio(rec)
         .. "+" .. addonData.buffs:marshallBuffs(self:recBuffs(rec))
+        .. "+" .. self:recMarshallAlts(rec)
+        .. "+" .. self:recAltWhispered(rec)
   end,
 
   ---------------------------------
   recUnMarshal = function(self, data)
     if data then
-      local player, time, status, prio, buffs = strsplit("+", data)
-      if player and time and status and prio and buffs then
-        return self:waitRecord(player, time, status, prio, addonData.buffs:unmarshallBuffs(buffs))
+      local player, time, status, prio, buffs, alts, altwhispered = strsplit("+", data)
+      if player and time and status and prio and buffs and alts and altwhispered then
+        return self:waitRecord(player, time, status, prio, addonData.buffs:unmarshallBuffs(buffs),
+            self:unmarshallAlts(alts), altwhispered)
       else
         db("summon.waitlist.record", "unmarshalled data contains nil", player, time, status, prio, buffs)
       end
@@ -218,6 +221,92 @@ local summon = {
   end,
 
   ---------------------------------
+  recAlts = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record alts value:", val)
+      rec[7] = {}
+      rec[7] = self:recMergeAlts(rec, val) -- duplicate proof add
+    end
+    return rec[7] or {}
+  end,
+
+  ---------------------------------
+  marshallAlts = function(_, alts)
+    local out = ""
+    local spacer = ""
+    for _,v in pairs(alts) do
+      if v and v ~= "" then
+        out = out .. spacer .. v
+        spacer = "&"
+      end
+    end
+    return out
+  end,
+
+  ---------------------------------
+  recMarshallAlts = function(self, rec)
+    return self:marshallAlts(rec[7])
+  end,
+
+  ---------------------------------
+  unmarshallAlts = function(_, marshalled)
+    local out = {}
+    local tmpOut = { strsplit("&", marshalled) }
+    for i,v in pairs(tmpOut) do
+      if v and v ~= "" then
+        db("summon.waitlist.record", "unmarshalling", v)
+        out[i] = v
+      end
+    end
+    return out
+  end,
+
+  ---------------------------------
+  recMergeAlts = function(_, rec, alts)
+    db("summon.waitlist.record","merging alts:", alts)
+    local oldAlts = rec[7] or {}
+    local newAlts = {}
+    local altMap = {} -- for duplicates in new map
+    local newIdx = 1
+
+    for _,alt in pairs(alts) do
+      if not altMap[alt] then
+        local add = true
+        for _,oldAlt in pairs(oldAlts) do
+          if alt == oldAlt then
+            add = false
+            break
+          end
+        end
+        if add then
+          altMap[alt] = true
+          newAlts[newIdx] = alt
+          newIdx = newIdx + 1
+        end
+      end
+    end
+
+    for _,v in pairs(newAlts) do
+      db("summon.waitlist.record", "merging alt", v)
+      table.insert(oldAlts, v)
+    end
+
+    rec[7] = oldAlts -- in case we made it
+    return rec[7]
+  end,
+
+  ---------------------------------
+  recAltWhispered = function(self, rec, val)
+    if val ~= nil then
+      self:listDirty(true)
+      db("summon.waitlist.record","setting record alt whispered:", val)
+      rec[8] = val
+    end
+    return rec[8]
+  end,
+
+  ---------------------------------
   recRemove = function(self, player)
     local ret = false
     local idx = self:findWaitingPlayerIdx(player)
@@ -284,7 +373,7 @@ local summon = {
 
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player)
-        and #buffs == 0 and self.localLocks <= SteaSummonSave.maxLocks then
+        and #buffs == 0 and self.localLocks < SteaSummonSave.maxLocks then
       for k, wait in pairs(self.waiting) do
         if self:recPrio(wait) ~= "Warlock" then
           db("summon.waitlist", "Warlock", player, "gets prio")
@@ -303,8 +392,8 @@ local summon = {
     -- Prio buffs
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
-        if not self:recPrio(wait) == "Warlock"
-            or (self:recPrio(wait) == "Buffed" and #self:recBuffs(wait) >= #buffs) then
+        if (self:recPrio(wait) ~= "Warlock" and self:recPrio(wait) ~= "Buffed")
+            or (self:recPrio(wait) == "Buffed" and #self:recBuffs(wait) < #buffs) then
           self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
@@ -355,10 +444,14 @@ local summon = {
       self:recAdd(self:waitRecord(player, 0, "requested", "Normal"), i)
     end
 
+    local rec = self:findWaitingPlayer(player)
+    self:recBuffs(rec, buffs)
+
     db("summon.waitlist", player .. " added to waiting list")
     self:showSummons()
   end,
 
+  ---------------------------------
   timerSecondTick = function(self)
     --- update timers
     -- yea this is dumb, but time doesnt really work in wow
@@ -468,7 +561,7 @@ local summon = {
           if SteaSummonShardIcon then SteaSummonShardIcon:Show() end
         end
 
-        if pos["height"] < 26 then
+        if pos["height"] < 28 then
           if SteaSummonToButton then SteaSummonToButton:Hide() end
         else
           if SteaSummonToButton then SteaSummonToButton:Show() end
@@ -543,6 +636,7 @@ local summon = {
             end
           end
           self.infoSend = not self.infoSend
+          addonData.gossip:nag(self.infoSend)
         end
 
         --- summon to button
@@ -615,6 +709,7 @@ local summon = {
     ------------------------------------------------------------
     --- update buttons
     local next = false
+    local listActive = false
     for i=1, 37 do
       local player
       local summonClick
@@ -712,12 +807,14 @@ local summon = {
 
         if self.waiting[i]  then
           --- Next Button
-          if not next and (self:recStatus(self.waiting[i]) == "requested"
-              and addonData.util:playerCanSummon() or self.isCasting) then
-            next = true
-            SetMacro(38)
-            addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
-            addonData.buttons[38].Button:Show()
+          if self:recStatus(self.waiting[i]) == "requested" then
+            if not next and (addonData.util:playerCanSummon() or self.isCasting) then
+              next = true
+              SetMacro(38)
+              addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
+              addonData.buttons[38].Button:Show()
+            end
+            listActive = true
           end
 
           --- Time
@@ -744,15 +841,19 @@ local summon = {
           end
         end
 
-        if not next and not self.isCasting then
-          -- all summons left are pending, disable the next button
-          addonData.buttons[38].Button:Hide()
+        self.needBoost = not listActive
+
+        if not next then
+          if not self.isCasting then
+            -- all summons left are pending, disable the next button
+            addonData.buttons[38].Button:Hide()
+          end
         end
       end -- skip visual updates
 
       --- summonTo
       if SteaSummonToButton then
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and SteaSummonFrame:GetHeight() >= 28 then
           SteaSummonToButton:Show()
         else
           SteaSummonToButton:Hide()
@@ -1115,18 +1216,19 @@ local summon = {
 
   offline = function(self, player)
     local offline = not UnitIsConnected(player)
-    local idx = self:findWaitingPlayerIdx(player)
-    if idx then
+    local rec = self:findWaitingPlayer(player)
+
+    if rec then
       local state = ""
-      if offline and not self:recStatus(self.waiting[idx]) == "offline" then
+      if offline and self:recStatus(rec) ~= "offline" then
         db("summon.waitlist", "setting status of " .. player .. " to offline")
         state = "offline"
-      elseif not online and self:recStatus(self.waiting[idx]) == "offline" then
+      elseif not offline and self:recStatus(rec) == "offline" then
         db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
         state = "requested"
       end
       if state ~= "" then
-        self:recStatus(self.waiting[idx], state)
+        self:recStatus(rec, state)
       end
     end
     return offline
@@ -1175,6 +1277,21 @@ local summon = {
   end,
 
   ---------------------------------
+  setRaidNags = function(self, nag)
+    if nag then
+      self.infoSend = true
+      if SteaSummonToButton then
+        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
+      end
+    else
+      self.infoSend = false
+      if SteaSummonToButton then
+        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+      end
+    end
+  end,
+
+  ---------------------------------
   getCurrentLocation = function(self)
     return self.myZone, self.myLocation
   end,
@@ -1189,10 +1306,6 @@ local summon = {
         SteaSummonFrame.destination:SetTextColor(0,1,0,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
       end
-      if SteaSummonToButton then
-        self.infoSend = true
-        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-      end
 
       if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location to destination
         addonData.gossip:atDestination(true)
@@ -1201,10 +1314,6 @@ local summon = {
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetTextColor(1,1,1,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
-      end
-      if SteaSummonToButton then
-        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-        self.infoSend = false
       end
 
       if self.zone ~= "" and self.location ~= "" then -- destination is set
@@ -1246,27 +1355,22 @@ local summon = {
         SteaSummonFrame.destination:SetText(s)
       end
       if self:isAtDestination() then
-        if SteaSummonToButton then
-          SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-        end
-        self.infoSend = true
         addonData.gossip:atDestination(true)
-      else
-        if SteaSummonToButton then
-          SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-        end
-        self.infoSend = false
       end
     else
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetText("")
       end
-      self.infoSend = false
     end
   end,
 
   ---------------------------------
-  isAtDestination= function(self)
+  getDestination = function(self)
+    return self.zone, self.location
+  end,
+
+  ---------------------------------
+  isAtDestination = function(self)
     return self.zone == self.myZone and self.location == self.myLocation
   end,
 
@@ -1329,7 +1433,7 @@ local summon = {
         self:shardIncrementBy(-1)
       end
     elseif event == "UNIT_SPELLCAST_CHANNEL_START" or
-      event == "UNIT_SPELLCAST_START" then
+        event == "UNIT_SPELLCAST_START" then
       if spellId == 698 then
         self.isCasting = true
       end

@@ -34,6 +34,15 @@ local debug = {
     if not SteaDEBUG or not SteaDEBUG.log then
       self:reset()
     end
+    if SteaDEBUG.loglength == nil then
+      SteaDEBUG.loglength = 3000
+    end
+
+    if #SteaDEBUG.log > SteaDEBUG.loglength then
+      for i = #SteaDEBUG.log, SteaDEBUG.loglength, -1 do
+        table.remove(SteaDEBUG.log)
+      end
+    end
 
     local f = CreateFrame("Frame", "DBFrame", UIParent, "AnimatedShineTemplate")
     f:SetPoint("CENTER")
@@ -166,6 +175,7 @@ local debug = {
     SteaDEBUG = {}
     SteaDEBUG.log = {}
     SteaDEBUG.on = false
+    SteaDEBUG.loglength = 3000
   end,
 
   show = function(self, show)

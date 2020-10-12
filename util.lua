@@ -9,26 +9,53 @@ local util = {
     return (s:gsub("^%s*(.-)%s*$", "%1"))
   end,
 
-  tableToMultiLine = function(_, table)
+  tableToMultiLine = function(_, table, sep)
     local text = ""
     local word
+    if sep == nil then
+      sep = ", "
+    end
+    local ins = ""
     for key, val in pairs(table) do
       if type(val) == "string" then
         word = val
       else
         word = key
       end
-      text = text .. word .. "\n"
+      if word ~= "" then
+        text = text .. ins .. word
+        if ins == "" then
+          ins = sep
+        end
+      end
     end
     return text
   end,
 
-  multiLineToTable = function(_, text)
-    return { strsplit("\n", text) }
+  multiLineToTable = function(_, text, sep)
+    -- might be comma or carriage return delimited
+    if not sep and string.find(text, ",") then
+      sep = ","
+    else
+      sep = "\n"
+    end
+    local out = {strsplit(sep, text)}
+
+    -- sanitize
+    local idx = 1
+    for _,v in pairs(out) do
+      local sanitized = strtrim(v)
+      if sanitized ~= "" then
+        out[idx] = sanitized
+        idx = idx + 1
+      end
+    end
+
+    return out
   end,
 
-  multiLineToMap = function(self,text)
-    local tbl = self:multiLineToTable(text)
+  multiLineToMap = function(self,text, sep)
+    local tbl = self:multiLineToTable(text, sep)
     local map = {}
 
     for _,v in pairs(tbl) do
@@ -92,6 +119,7 @@ local util = {
     addonData.summon.waiting = waiting
     addonData.summon.numwaiting = numwaiting
     addonData.summon:listDirty(true)
+    addonData.summon:showSummons()
   end,
 
   sortWaitingTableByTime = function()

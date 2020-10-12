@@ -1,35 +1,15 @@
 -- Raid tracking
 local _, addonData = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
-
--- events of interest
--- GROUP_ROSTER_UPDATE
--- PARTY_LEADER_CHANGED
--- NAME_PLATE_UNIT_REMOVED
--- NAME_PLATE_UNIT_ADDED
-
---GetRaidRosterInfo(1..40)
---UnitInRaid("unit")
-
-local old, new = {}, {}
-
-local dead = {}
-
 
 local raid = {
   inzone = {},
   caninvite = {},
-  groupInit = true,
   roster = {},
   rosterOld = {},
   clickers = {},
 
-  init = function(self)
+  init = function(_)
     addonData.debug:registerCategory("raid.event")
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-      self.groupInit = false
-      self:updateRaid()
-    end
   end,
 
   callback = function(self, event, ...)
@@ -38,28 +18,21 @@ local raid = {
     self = addonData.raid
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
-      addonData.raid.groupInit = false
       self:updateRaid()
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
-      addonData.summon:postInitSetup()
       if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        addonData.raid.groupInit = false
         self:updateRaid()
       end
     end
   end,
 
   updateRaid = function(self)
-    if addonData.raid.groupInit then
-      return
-    end
     self.roster, self.rosterOld = self.rosterOld, self.roster
     wipe(self.roster)
 
     if not IsInGroup(LE_PARTY_CATEGORY_HOME) then
-      addonData.raid.groupInit = true
       addonData.summon:listClear()
       addonData.gossip:raidLeft()
       wipe(self.rosterOld)
@@ -67,25 +40,23 @@ local raid = {
     end
 
     for i = 1, GetNumGroupMembers() do
-      local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
-      --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
-      if name == nil then
-        break
-      end
-      self.roster[name] = 1
+      local name, rank = GetRaidRosterInfo(i)
+      if name ~= nil then
+        self.roster[name] = 1
 
-      if self.rosterOld[name] == nil then
-        db("raid", name, "joined the raid.")
-        local myName, _ = UnitName("player")
-        if myName == name then
-          addonData.gossip:raidJoined()
+        if self.rosterOld[name] == nil then
+          db("raid", name, "joined the raid.")
+          local myName, _ = UnitName("player")
+          if myName == name then
+            addonData.gossip:raidJoined()
+          end
         end
-      end
 
-      if rank > 0 then
-        self.caninvite[name] = true
-      else
-        self.caninvite[name] = false
+        if rank > 0 then
+          self.caninvite[name] = true
+        else
+          self.caninvite[name] = false
+        end
       end
     end
 

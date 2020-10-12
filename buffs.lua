@@ -75,20 +75,33 @@ buffs = {
     local out = ""
     local spacer = ""
     for _,v in pairs(buffs) do
-      if #v then
+      if #v > 0 then
+        db("buffs", v[1])
         out = out .. spacer .. v[1] .. "~" .. v[2]
         spacer = "&"
       end
     end
+    db("buffs", "buffs marshalled", out)
     return out
   end,
 
   unmarshallBuffs = function(self, marshalled)
     local out = {}
+    db("buffs", "unmarshalling", marshalled)
+    if not marshalled or marshalled == "" then
+      return out
+    end
+
     local tmpOut = { strsplit("&", marshalled) }
     for i,v in pairs(tmpOut) do
-      out[i] = { strsplit("~", tmpOut[i]) }
+      if not (v == nil or v == "") then
+        db("buffs", "unmarshalling", v)
+        out[i] = { strsplit("~", v) }
+      end
+
+      db("buffs", "buff unmarshalled", out[i][1], out[i][2])
     end
+
     return out
   end,
 }
