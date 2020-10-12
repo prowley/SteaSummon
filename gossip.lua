@@ -159,8 +159,8 @@ local gossip = {
       return
     end
 
-    db("gossip", "group joined")
     if self.inInit and not self.versionBad and not self.inRaid then
+      db("gossip", "group joined")
       self.inRaid = true
       -- 1. On first raidJoin, request network list
       db("gossip", ">> netreq >>", self:groupText())
@@ -177,8 +177,8 @@ local gossip = {
       if SteaSummonSave.clickersnagtimer then
         self.clickersNagTimer = addonData.monitor:create(SteaSummonSave.clickersnagtimer * 60, self.clickerNag, false)
       end
+      self:SteaSummonVersion()
     end
-    self:SteaSummonVersion()
   end,
 
   ---------------------------------

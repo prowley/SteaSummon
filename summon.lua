@@ -23,6 +23,7 @@ local summon = {
     ["Warlock"] = L["W"],
     ["Buffed"] = L["B"],
     ["Normal"] = L["N"],
+    ["Prioritized"] = L["P"],
     ["Last"] = L["L"]
   },
   localLocks = 0,
@@ -48,8 +49,8 @@ local summon = {
 
     -- there seems to be no good event/time to check if we are in a group
     -- group roster changes fail to tell us when we are NOT in a group
-    -- so we're gonna bodge this one
-    C_Timer.After(4, self.postInitSetup)
+    -- so we're gonna bodge this one, worst case is it takes a while to clear the list
+    C_Timer.After(10, self.postInitSetup) -- bumped to 10 seconds, after laggy server experiences, an eternity I know
   end,
 
   ---------------------------------
@@ -63,25 +64,20 @@ local summon = {
     end
     self.postInit = false
 
-    -- sanity debug
-    for i,v in pairs(SteaSummonSave.waiting) do
-      db("waitlist", i, v)
-    end
-
     local ts = GetTime()
 
     if not IsInGroup(LE_PARTY_CATEGORY_HOME)
         or SteaSummonSave.waitingKeepTime == 0
-        or ts - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then
+        or ts - 10 - SteaSummonSave.timeStamp > SteaSummonSave.waitingKeepTime * 60 then -- -10 for the bodge factor
       db("wiping wait list")
-      db("saved mins", (ts - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
+      db("saved mins", (ts - 10 - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       self:listClear()
     else
       addonData.gossip:raidJoined()
     end
 
-    -- good time for a version check
+    -- good time for a version check -- this goes to guild if not in raid
     addonData.gossip:SteaSummonVersion()
   end,
 

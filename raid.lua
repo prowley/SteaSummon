@@ -1,30 +1,14 @@
 -- Raid tracking
 local _, addonData = ...
-local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
-
--- events of interest
--- GROUP_ROSTER_UPDATE
--- PARTY_LEADER_CHANGED
--- NAME_PLATE_UNIT_REMOVED
--- NAME_PLATE_UNIT_ADDED
-
---GetRaidRosterInfo(1..40)
---UnitInRaid("unit")
-
-local old, new = {}, {}
-
-local dead = {}
-
 
 local raid = {
   inzone = {},
   caninvite = {},
-  groupInit = true,
   roster = {},
   rosterOld = {},
   clickers = {},
 
-  init = function(self)
+  init = function(_)
     addonData.debug:registerCategory("raid.event")
   end,
 
@@ -38,7 +22,6 @@ local raid = {
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
-      addonData.summon:postInitSetup()
       if IsInGroup(LE_PARTY_CATEGORY_HOME) then
         self:updateRaid()
       end
@@ -50,7 +33,6 @@ local raid = {
     wipe(self.roster)
 
     if not IsInGroup(LE_PARTY_CATEGORY_HOME) then
-      addonData.raid.groupInit = true
       addonData.summon:listClear()
       addonData.gossip:raidLeft()
       wipe(self.rosterOld)
@@ -58,8 +40,7 @@ local raid = {
     end
 
     for i = 1, GetNumGroupMembers() do
-      local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
-      --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
+      local name, rank = GetRaidRosterInfo(i)
       if name ~= nil then
         self.roster[name] = 1
 

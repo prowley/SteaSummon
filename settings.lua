@@ -78,7 +78,7 @@ settings = {
     end
 
     if SteaSummonSave.altbuffed == nil then
-      SteaSummonSave.altbuffed = true
+      SteaSummonSave.altbuffed = false
       SteaSummonSave.qspot = 2
       SteaSummonSave.initialQspot = 6
       SteaSummonSave.alttoons = {}
@@ -118,7 +118,7 @@ settings = {
     SteaSummonSave.clickersnagtimer = 1
     SteaSummonSave.raidinfotimer = 2
     SteaSummonSave.clicknagtimer = 10
-    SteaSummonSave.altbuffed = true
+    SteaSummonSave.altbuffed = false
     SteaSummonSave.qspot = 2
     SteaSummonSave.initialQspot = 6
     SteaSummonSave.alttoons = {}

@@ -36,6 +36,7 @@ L["requested"] = true
 L["Buffed"] = true
 L["B"] = true
 L["Prioritized"] = true
+L["P"] = true
 L["Last"] = true
 L["L"] = true
 L["Normal"] = true

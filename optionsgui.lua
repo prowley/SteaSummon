@@ -635,18 +635,21 @@ function rummage()
 end
 
 function optionsgui.init()
-  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummon", optionsgui.options, "ss")
+  local me = UnitName("player")
+  local name = "SteaSummon (" .. me .. ")"
+
+  LibStub("AceConfig-3.0"):RegisterOptionsTable(name, optionsgui.options, "ss")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonMessages", chat, "ss-chat")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonWords", summonwords, "ss-words")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonPrios", priorities, "ss-prio")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAlts", alts, "ss-alts")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAdv", advanced)
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAlts", L["Alt Support"], "SteaSummon")
-  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAdv", L["Advanced"], "SteaSummon")
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions(name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAlts", L["Alt Support"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAdv", L["Advanced"], name)
 end
 
 
