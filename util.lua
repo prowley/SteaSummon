@@ -119,6 +119,7 @@ local util = {
     addonData.summon.waiting = waiting
     addonData.summon.numwaiting = numwaiting
     addonData.summon:listDirty(true)
+    addonData.summon:showSummons()
   end,
 
   sortWaitingTableByTime = function()

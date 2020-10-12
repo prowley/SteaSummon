@@ -88,13 +88,17 @@ buffs = {
   unmarshallBuffs = function(self, marshalled)
     local out = {}
     db("buffs", "unmarshalling", marshalled)
+    if not marshalled or marshalled == "" then
+      return out
+    end
+
     local tmpOut = { strsplit("&", marshalled) }
     for i,v in pairs(tmpOut) do
-      db("buffs", v)
-      out[i] = { strsplit("~", type(v), v) }
-      if #out ~= 2 then
-        db("buffs", "BAD LENGTH FOR BUFF ENTRY")
+      if not (v == nil or v == "") then
+        db("buffs", "unmarshalling", v)
+        out[i] = { strsplit("~", v) }
       end
+
       db("buffs", "buff unmarshalled", out[i][1], out[i][2])
     end
 

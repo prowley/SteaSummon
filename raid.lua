@@ -26,10 +26,6 @@ local raid = {
 
   init = function(self)
     addonData.debug:registerCategory("raid.event")
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-      self.groupInit = false
-      self:updateRaid()
-    end
   end,
 
   callback = function(self, event, ...)
@@ -38,23 +34,18 @@ local raid = {
     self = addonData.raid
 
     if (event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE") then
-      addonData.raid.groupInit = false
       self:updateRaid()
     end
 
     if (event == "PARTY_LEADER_CHANGED") then
       addonData.summon:postInitSetup()
       if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        addonData.raid.groupInit = false
         self:updateRaid()
       end
     end
   end,
 
   updateRaid = function(self)
-    if addonData.raid.groupInit then
-      return
-    end
     self.roster, self.rosterOld = self.rosterOld, self.roster
     wipe(self.roster)
 
@@ -69,23 +60,22 @@ local raid = {
     for i = 1, GetNumGroupMembers() do
       local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot = GetRaidRosterInfo(i)
       --db("raid", "enum:", name, rank, subgroup, level, class, fileName, zone, online, isDead, role, loot)
-      if name == nil then
-        break
-      end
-      self.roster[name] = 1
+      if name ~= nil then
+        self.roster[name] = 1
 
-      if self.rosterOld[name] == nil then
-        db("raid", name, "joined the raid.")
-        local myName, _ = UnitName("player")
-        if myName == name then
-          addonData.gossip:raidJoined()
+        if self.rosterOld[name] == nil then
+          db("raid", name, "joined the raid.")
+          local myName, _ = UnitName("player")
+          if myName == name then
+            addonData.gossip:raidJoined()
+          end
         end
-      end
 
-      if rank > 0 then
-        self.caninvite[name] = true
-      else
-        self.caninvite[name] = false
+        if rank > 0 then
+          self.caninvite[name] = true
+        else
+          self.caninvite[name] = false
+        end
       end
     end
 

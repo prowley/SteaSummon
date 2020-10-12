@@ -27,6 +27,7 @@ local summon = {
   },
   localLocks = 0,
   localClickers = 0,
+  needBoost = false,
 
   ---------------------------------
   init = function(self)
@@ -76,6 +77,8 @@ local summon = {
       db("saved mins", (ts - SteaSummonSave.timeStamp)/60, "keep mins", SteaSummonSave.waitingKeepTime)
       db("group status:", IsInGroup(LE_PARTY_CATEGORY_HOME))
       self:listClear()
+    else
+      addonData.gossip:raidJoined()
     end
 
     -- good time for a version check
@@ -112,6 +115,7 @@ local summon = {
     if dirty ~= nil then
       self.dirty = dirty
     end
+    addonData.monitor:start()
     return self.dirty
   end,
 
@@ -236,8 +240,10 @@ local summon = {
     local out = ""
     local spacer = ""
     for _,v in pairs(alts) do
-      out = out .. spacer .. v
-      spacer = "&"
+      if v and v ~= "" then
+        out = out .. spacer .. v
+        spacer = "&"
+      end
     end
     return out
   end,
@@ -252,7 +258,10 @@ local summon = {
     local out = {}
     local tmpOut = { strsplit("&", marshalled) }
     for i,v in pairs(tmpOut) do
-      out[i] = v
+      if v and v ~= "" then
+        db("summon.waitlist.record", "unmarshalling", v)
+        out[i] = v
+      end
     end
     return out
   end,
@@ -260,7 +269,6 @@ local summon = {
   ---------------------------------
   recMergeAlts = function(_, rec, alts)
     db("summon.waitlist.record","merging alts:", alts)
-    local out = {}
     local oldAlts = rec[7] or {}
     local newAlts = {}
     local altMap = {} -- for duplicates in new map
@@ -274,16 +282,17 @@ local summon = {
             add = false
             break
           end
-          if add then
-            altMap[alt] = true
-            newAlts[newIdx] = alt
-            newIdx = newIdx + 1
-          end
+        end
+        if add then
+          altMap[alt] = true
+          newAlts[newIdx] = alt
+          newIdx = newIdx + 1
         end
       end
     end
 
     for _,v in pairs(newAlts) do
+      db("summon.waitlist.record", "merging alt", v)
       table.insert(oldAlts, v)
     end
 
@@ -368,7 +377,7 @@ local summon = {
 
     -- Prio warlock
     if SteaSummonSave.warlocks and addonData.util:playerCanSummon(player)
-        and #buffs == 0 and self.localLocks <= SteaSummonSave.maxLocks then
+        and #buffs == 0 and self.localLocks < SteaSummonSave.maxLocks then
       for k, wait in pairs(self.waiting) do
         if self:recPrio(wait) ~= "Warlock" then
           db("summon.waitlist", "Warlock", player, "gets prio")
@@ -387,8 +396,8 @@ local summon = {
     -- Prio buffs
     if not inserted and SteaSummonSave.buffs == true and #buffs > 0 then
       for k, wait in pairs(self.waiting) do
-        if not self:recPrio(wait) == "Warlock"
-            or (self:recPrio(wait) == "Buffed" and #self:recBuffs(wait) >= #buffs) then
+        if (self:recPrio(wait) ~= "Warlock" and self:recPrio(wait) ~= "Buffed")
+            or (self:recPrio(wait) == "Buffed" and #self:recBuffs(wait) < #buffs) then
           self:recAdd(self:waitRecord(player, 0, "requested", "Buffed"), k)
           db("summon.waitlist", "Buffed " .. player .. " gets prio")
           inserted = true
@@ -556,7 +565,7 @@ local summon = {
           if SteaSummonShardIcon then SteaSummonShardIcon:Show() end
         end
 
-        if pos["height"] < 26 then
+        if pos["height"] < 28 then
           if SteaSummonToButton then SteaSummonToButton:Hide() end
         else
           if SteaSummonToButton then SteaSummonToButton:Show() end
@@ -631,6 +640,7 @@ local summon = {
             end
           end
           self.infoSend = not self.infoSend
+          addonData.gossip:nag(self.infoSend)
         end
 
         --- summon to button
@@ -703,6 +713,7 @@ local summon = {
     ------------------------------------------------------------
     --- update buttons
     local next = false
+    local listActive = false
     for i=1, 37 do
       local player
       local summonClick
@@ -800,12 +811,14 @@ local summon = {
 
         if self.waiting[i]  then
           --- Next Button
-          if not next and (self:recStatus(self.waiting[i]) == "requested"
-              and addonData.util:playerCanSummon() or self.isCasting) then
-            next = true
-            SetMacro(38)
-            addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
-            addonData.buttons[38].Button:Show()
+          if self:recStatus(self.waiting[i]) == "requested" then
+            if not next and (addonData.util:playerCanSummon() or self.isCasting) then
+              next = true
+              SetMacro(38)
+              addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
+              addonData.buttons[38].Button:Show()
+            end
+            listActive = true
           end
 
           --- Time
@@ -832,8 +845,9 @@ local summon = {
           end
         end
 
+        self.needBoost = not listActive
+
         if not next then
-          addonData.gossip:altBoost()
           if not self.isCasting then
             -- all summons left are pending, disable the next button
             addonData.buttons[38].Button:Hide()
@@ -843,7 +857,7 @@ local summon = {
 
       --- summonTo
       if SteaSummonToButton then
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and SteaSummonFrame:GetHeight() >= 28 then
           SteaSummonToButton:Show()
         else
           SteaSummonToButton:Hide()
@@ -1206,18 +1220,19 @@ local summon = {
 
   offline = function(self, player)
     local offline = not UnitIsConnected(player)
-    local idx = self:findWaitingPlayerIdx(player)
-    if idx then
+    local rec = self:findWaitingPlayer(player)
+
+    if rec then
       local state = ""
-      if offline and not self:recStatus(self.waiting[idx]) == "offline" then
+      if offline and self:recStatus(rec) ~= "offline" then
         db("summon.waitlist", "setting status of " .. player .. " to offline")
         state = "offline"
-      elseif not online and self:recStatus(self.waiting[idx]) == "offline" then
+      elseif not offline and self:recStatus(rec) == "offline" then
         db("summon.waitlist", "setting status of " .. player .. " from offline to requested")
         state = "requested"
       end
       if state ~= "" then
-        self:recStatus(self.waiting[idx], state)
+        self:recStatus(rec, state)
       end
     end
     return offline
@@ -1266,6 +1281,21 @@ local summon = {
   end,
 
   ---------------------------------
+  setRaidNags = function(self, nag)
+    if nag then
+      self.infoSend = true
+      if SteaSummonToButton then
+        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
+      end
+    else
+      self.infoSend = false
+      if SteaSummonToButton then
+        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+      end
+    end
+  end,
+
+  ---------------------------------
   getCurrentLocation = function(self)
     return self.myZone, self.myLocation
   end,
@@ -1280,10 +1310,6 @@ local summon = {
         SteaSummonFrame.destination:SetTextColor(0,1,0,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
       end
-      if SteaSummonToButton then
-        self.infoSend = true
-        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-      end
 
       if oldZone ~= self.myZone or oldLocation ~= self.myLocation then -- we changed location to destination
         addonData.gossip:atDestination(true)
@@ -1292,10 +1318,6 @@ local summon = {
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetTextColor(1,1,1,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
-      end
-      if SteaSummonToButton then
-        SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-        self.infoSend = false
       end
 
       if self.zone ~= "" and self.location ~= "" then -- destination is set
@@ -1337,27 +1359,22 @@ local summon = {
         SteaSummonFrame.destination:SetText(s)
       end
       if self:isAtDestination() then
-        if SteaSummonToButton then
-          SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-        end
-        self.infoSend = true
         addonData.gossip:atDestination(true)
-      else
-        if SteaSummonToButton then
-          SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-        end
-        self.infoSend = false
       end
     else
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetText("")
       end
-      self.infoSend = false
     end
   end,
 
   ---------------------------------
-  isAtDestination= function(self)
+  getDestination = function(self)
+    return self.zone, self.location
+  end,
+
+  ---------------------------------
+  isAtDestination = function(self)
     return self.zone == self.myZone and self.location == self.myLocation
   end,
 

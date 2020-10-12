@@ -24,6 +24,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- version SteaSummon version Broadcast
 -- alt alt list for player
 -- wsp player alt whispered
+-- n nags
 
 local DEFAULT_NETLIST_TIME = 15
 
@@ -53,6 +54,7 @@ local gossip = {
   adjLocks = 0,
   raidInfoTimer = nil,
   clickersNagTimer = nil,
+  inRaid = false,
 
 
   ---------------------------------
@@ -158,7 +160,8 @@ local gossip = {
     end
 
     db("gossip", "group joined")
-    if self.inInit and not self.versionBad then
+    if self.inInit and not self.versionBad and not self.inRaid then
+      self.inRaid = true
       -- 1. On first raidJoin, request network list
       db("gossip", ">> netreq >>", self:groupText())
       self:SendCommMessage(self.channel, "netreq ".. self.votes.. "+"
@@ -169,10 +172,10 @@ local gossip = {
       -- make ourselves leader temporarily so we can replay messages to the leader when network established
       table.insert(self.netList, 1, self.me)
       if SteaSummonSave.raidinfotimer then
-        self.raidInfoTimer = addonData.monitor:create(30, self.raidInfo, false)
+        self.raidInfoTimer = addonData.monitor:create(SteaSummonSave.raidinfotimer * 60, self.raidInfo, false)
       end
       if SteaSummonSave.clickersnagtimer then
-        self.clickersNagTimer = addonData.monitor:create(30, self.clickerNag, false)
+        self.clickersNagTimer = addonData.monitor:create(SteaSummonSave.clickersnagtimer * 60, self.clickerNag, false)
       end
     end
     self:SteaSummonVersion()
@@ -182,13 +185,20 @@ local gossip = {
   raidInfo = function(self)
     self = addonData.gossip
 
-    if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
+    if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
       ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
           (self.locksCount and self.atDestCount - self.locksCount > 2)) and
             addonData.summon.zone ~= ""
     then
+      local msg = SteaSummonSave.raidinfo
+      local z, l = addonData.summon:getDestination()
       db("gossip", "raid info")
-      addonData.chat:raid(SteaSummonSave.raidinfo, self.me)
+      local patterns = {
+        ["%%l"] = l,
+        ["%%z"] = z
+      }
+      msg = tstring(msg, patterns)
+      addonData.chat:raid(msg, self.me)
     end
 
     if SteaSummonSave.raidinfotimer then
@@ -198,15 +208,23 @@ local gossip = {
 
   ---------------------------------
   clickerNag = function(self)
-    -- TODO: instance check and option, obvious way to turn it off from the window
     self = addonData.gossip
-    if not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
+
+    if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
         not ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
           (self.locksCount and self.atDestCount - self.locksCount > 2)) and
             addonData.summon.zone ~= ""
     then
       db("gossip", "clicker nag")
-      addonData.chat:raid(SteaSummonSave.clickersnag, self.me)
+      local msg = SteaSummonSave.clickersnag
+      local z, l = addonData.summon:getDestination()
+      db("gossip", "raid info")
+      local patterns = {
+        ["%%l"] = l,
+        ["%%z"] = z
+      }
+      msg = tstring(msg, patterns)
+      addonData.chat:raid(msg, self.me)
     end
 
     if SteaSummonSave.clickersnagtimer then
@@ -273,6 +291,7 @@ local gossip = {
       self.netlistTimer:Cancel()
     end
     addonData.summon:listClear()
+    self.inRaid = false
     self.recvElections = 0
     self.inInit = true
     wipe(self.netList)
@@ -301,6 +320,22 @@ local gossip = {
   end,
 
   ---------------------------------
+  nag = function(self, set)
+    if set then
+      set = "true"
+    else
+      set = "false"
+    end
+    if self:isLeader() then
+      db("gossip", ">> nag >>", self:groupText(), set)
+      self:SendCommMessage(self.channel, "n " .. set, self:groupText(), self.netList[1])
+    else
+      db("gossip", ">> nag >> WHISPER", set)
+      self:SendCommMessage(self.channel, "n " .. set, "WHISPER", self.netList[1])
+    end
+  end,
+
+  ---------------------------------
   status = function(self, player, status)
     self:offlineCheck()
 
@@ -317,6 +352,9 @@ local gossip = {
           if status == "offline" then
             self.atDest[player] = nil
             self:updateCounts(false, player)
+          end
+          if addonData.summon.needBoost then
+            addonData.alt:listBoost()
           end
         end
       end
@@ -385,21 +423,19 @@ local gossip = {
   end,
 
   ---------------------------------
-  altBoost = function(self)
-    if self:isLeader() then
-      addonData.alt:listBoost()
-    end
-  end,
-
-  ---------------------------------
-  alts = function(self, player, playeralts, isWhisper)
+  alts = function(self, player, playeralts)
     self:offlineCheck()
     local alts
 
     if self:isLeader() then
       local rec = addonData.summon:findWaitingPlayer(player)
       if rec then
-        alts = addonData.summon:marshallAlts(addonData.summon:recMergeAlts(rec, playeralts))
+        local mergedAlts = addonData.summon:recMergeAlts(rec, playeralts)
+        for _, v in pairs(mergedAlts) do
+          db("gossip", v)
+        end
+        alts = addonData.summon:marshallAlts(mergedAlts)
+        db("gossip", alts)
 
         if self:noComms() then
           return
@@ -412,11 +448,9 @@ local gossip = {
       if self:noComms() then
         return
       end
-      if isWhisper or self.inInit then
-        alts = addonData.summon:marshallAlts(playeralts)
-        db("gossip", ">> alts >> WHISPER", self.netList[1], player, alts)
-        self:SendCommMessage(self.channel, "alt " .. player .. "+" .. alts, "WHISPER", self.netList[1])
-      end
+      alts = addonData.summon:marshallAlts(playeralts)
+      db("gossip", ">> alts >> WHISPER", self.netList[1], player, alts)
+      self:SendCommMessage(self.channel, "alt " .. player .. "+" .. alts, "WHISPER", self.netList[1])
     end
   end,
 
@@ -739,6 +773,12 @@ local gossip = {
           -- next waiting list
           db("gossip", ">> waiting list >> WHISPER", sender, data)
           self:SendCommMessage(self.channel, "l " .. data, "WHISPER", sender, "BULK")
+          local toggle = "true"
+          if addonData.summon.infoSend == false then
+            toggle = "false"
+          end
+          db("gossip", ">> nag >> WHISPER", sender, toggle)
+          self:SendCommMessage(self.channel, "n " .. toggle, "WHISPER", sender)
         end
       end
 
@@ -750,7 +790,7 @@ local gossip = {
       db("gossip", player, alts)
 
       if self:isLeader() then
-        self:alt(player, alts)
+        self:alts(player, alts)
       else
         local rec = addonData.summon:findWaitingPlayer(player)
         if rec then
@@ -794,6 +834,11 @@ local gossip = {
       db("gossip", "<< waiting list <<", subcmd)
       addonData.util:unmarshalWaitingTable(subcmd)
       self:replayMessageLog(self.replayLog)
+
+      --- nag toggle
+    elseif cmd == "n" then
+      db("gossip", "<< nag <<", subcmd)
+      addonData.summon:setRaidNags(subcmd == "true")
 
       --- destination change
     elseif cmd == "d" then

@@ -93,6 +93,7 @@ function loaded(_, event, ...)
     addonData.debug:chatCat("summon.spellcast")
     addonData.debug:chatCat("summon.display")
     addonData.debug:chatCat("gossip")
+    addonData.debug:chatCat("raid")
     addonData.debug:chatCat("alt")
     addonData.debug:chatCat("buffs")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output

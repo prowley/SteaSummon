@@ -20,7 +20,7 @@ local alt = {
 
   newPlayer = function(self, player)
     if player == self.me then
-      for i,v in pairs(SteaSummonSave.alttoons) do
+      for _,v in pairs(SteaSummonSave.alttoons) do
         db("alt", "mytoon:", v)
       end
       if #SteaSummonSave.alttoons > 0 then
@@ -31,24 +31,35 @@ local alt = {
     end
   end,
 
-  listWhisper = function(self, upTo)
+  listWhisper = function(_, upTo, boost)
     -- maybe some convos get triggered
     local i = 1
+    local boosted = 0
 
+    if upTo == nil then
+      upTo = summon.numwaiting
+    end
+
+    db("alt", "checking list for offlines with alts")
     while(i <= summon.numwaiting and i <= upTo) do
       local rec = summon.waiting[i]
+      local player = summon:recPlayer(rec)
 
-      if summon:recStatus(rec) == "offline" and summon:recAltWhispered(rec) ~= "" and #summon:recAlts(rec) > 0 then
+      db("alt", "player", player)
+      if summon:recStatus(rec) == "offline" and summon:recAltWhispered(rec) == "" and #summon:recAlts(rec) > 0 then
+        db("alt", "offline with alts")
         for _,alt in pairs(summon:recAlts(rec)) do
-          if self:isOnline(alt) then
-            db("alt", "whispering", alt)
-            chat:whisper(SteaSummonSave.altGetOnlineWhisper, alt)
-            summon:recAltWhispered(rec, alt)
-            gossip:altWhispered(summon:recPlayer(rec), alt)
-            break
-          end
+          db("alt", "whispering", alt)
+          chat:whisper(SteaSummonSave.altGetOnlineWhisper, alt)
+          summon:recAltWhispered(rec, summon:recAltWhispered(rec) .. alt .. ",")
+          gossip:altWhispered(summon:recPlayer(rec), alt)
+        end
+        boosted = boosted + 1
+        if boost and boosted == boost then
+          break
         end
       end
+      i = i + 1
     end
   end,
 
@@ -62,16 +73,16 @@ local alt = {
   end,
 
   listBoost = function(self)
-    local upTo = SteaSummonSave.qboost
-    if upTo == 0 or upTo == 41 then
+    local boost = SteaSummonSave.qboost
+    if boost == 0 then
       return
     end
-    if upTo < SteaSummonSave.qspot then
-      self:listWhisper(upTo)
-    end
+
+    self:listWhisper(nil, boost)
   end,
 
   whispered = function(_, player, text)
+    db("alt", "whispered", text, "from", player)
     local wait = summon:findWaitingPlayer(player)
     if not wait or summon:recStatus(wait) ~= "requested" then
       -- filter out thank yous and such (because the world is asynchronous)
@@ -84,8 +95,7 @@ local alt = {
     local words = util:multiLineToTable(text, ",")
     for _, v in pairs(words) do
       local alt = strtrim(v)
-      db("alt", v, alt, v == alt)
-      if util:multiLineToTable(alt, " ") then
+      if string.find(v, " ") then
         -- probably indicates something other than an alt or list of alts
         -- otoh, failure conditions include lmao, plz, and other drivel, let's hope those aren't real toons
         db("alt", "spaces found")
@@ -100,7 +110,7 @@ local alt = {
     end
   end,
 
-  askForAlts = function(self, player)
+  askForAlts = function(_, player)
     local idx = summon:findWaitingPlayerIdx(player)
 
     if gossip.netList[player] then
@@ -115,11 +125,6 @@ local alt = {
       -- we need to talk
       chat:whisper(SteaSummonSave.altWhisper, player)
     end
-  end,
-
-  isOnline = function(self, player)
-    -- TODO: everything
-
   end,
 }
 
