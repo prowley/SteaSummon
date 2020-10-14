@@ -1361,6 +1361,7 @@ local summon = {
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetText("")
       end
+      addonData.raid:relinquish()
     end
   end,
 

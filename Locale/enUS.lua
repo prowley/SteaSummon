@@ -1,11 +1,11 @@
 --localization file for english/United States
 local L = LibStub("AceLocale-3.0"):NewLocale("SteaSummon", "enUS", true)
 
--- main.lua
+--- main.lua
 L["Summon Next"] = true
 L["Set Destination"] = true
 
--- chat.lua
+--- chat.lua
 L["list"] = true
 L["%name waiting: %number seconds"] = true
 L["Summon waiting list"] = true
@@ -15,11 +15,11 @@ L["on"] = true
 L["off"] = true
 L["add"] = true
 
--- raid.lua
+--- raid.lua
 L["Warlocks"] = true
 L["Clickers"] = true
 
--- settings.lua
+--- settings.lua
 L["Summoning %p"] = true
 L["Summoning you to %l in %z"] = true
 L["Summoning %p, please click the portal"] = true
@@ -29,7 +29,7 @@ L["clicknag"] = "Click the summoning portal!"
 L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."] = true
 L["You are near the top of the summon queue. Get online now."] = true
 
--- summon.lua
+--- summon.lua
 L["Warlock"] = true
 L["W"] = true
 L["requested"] = true
@@ -53,7 +53,7 @@ L["Destination: %subzone, %zone"] = true
 L["Next"] = true
 L["Alt:"] = true
 
--- optionsgui.lua
+--- optionsgui.lua
 L["Raid summon instructions"] = true
 L["a sentence that that posts to raid periodically"] = true
 L["Raid request for clickers"] = true
@@ -123,6 +123,8 @@ L["Use AddOn Broadcast Communications"] = true
 L["broadcastdesc"] = "Get and send summoning status updates. Gives you notifications of summon status changes, and helps to keep the summoning list alive through relogs. Makes the Next button more effective with multiple warlock summoners i.e. please don't turn this off."
 L["Version Details"] = true
 L["SteaSummon version %s\n\nWoW client\nversion: %v\nbuild: %b\ndate: %d\ntocversion: %t"] = true
+
+-- alts
 L["Alt Support"] = true
 L["Alt Character Options"] = true
 L["altdesc"] = "These options allow players to log on another character while waiting for their summon to be ready."
@@ -141,6 +143,37 @@ L["a sentence that is whispered to instruct the player how to add an alt for the
 L["Whisper summon ready text"] = true
 L["a sentence that is whispered to tell an alt their summon is ready"] = true
 
--- gossip.lua
+-- raid
+L["Raid Management"] = true
+L["Raid Management Options"] = true
+L["These options perform raid management actions to form your raid when you are raid leader."] = true
+L["Warlocks get assist"] = true
+L["Give assist status to unbuffed summoners"] = true
+L["Final raid leadership are named players"] = true
+L["When relinquishing leadership, ensure only the named players keep their roles"] = true
+L["Delay leadership transfer"] = true
+L["Only transfer leadership once the destination is unset and summons are over"] = true
+L["Players to give assist"] = true
+L["These players will be given raid assist when they join the raid"] = true
+L["Players to promote to leader"] = true
+L["leaderdesc"] = "These players will be given assist and then (in preference order) promoted to leader when leadership is relinquished"
+L["Players to set as master looter"] = true
+L["mldesc"] = "These players will be given assist and then assigned master looter (in preference order) when leadership is relinquished"
+L["Auto invite players who whisper these trigger words"] = true
+L["These trigger words will trigger an invitation to the raid"] = true
+L["Enable auto invite"] = true
+L["Allow people to request invites to the raid via whisper"] = true
+L["Only Guild"] = true
+L["Only Guild and Friends"] = true
+L["Anyone"] = true
+L["Off"] = true
+L["Enable accept invites"] = true
+L["Accept group invites to the raid"] = true
+L["Auto convert to raid"] = true
+L["When you form a party, convert it to a raid"] = true
+L["Automatic Invite Options"] = true
+L["These options determine how automatic invite and accept works"] = true
+
+--- gossip.lua
 L["There is a newer version available."] = true
 L["version"] = "Network communications is disabled. Your version of SteaSummon has an old network protocol version. You should update and restart your client now."

@@ -31,6 +31,7 @@ function start()
   call["UNIT_SPELLCAST_CHANNEL_STOP"] = addonData.summon.castWatch
   call["UNIT_SPELLCAST_SUCCEEDED"] = addonData.summon.castWatch
   call["ITEM_PUSH"] = addonData.summon.bagPushShardCheck
+  call["PARTY_INVITE_REQUEST"] = addonData.raid.acceptInvites
 
   -- under observation
   call["UNIT_SPELLCAST_FAILED_QUIET"] = addonData.monitor.callback
