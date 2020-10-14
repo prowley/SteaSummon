@@ -6,6 +6,7 @@ local gossip = addonData.gossip
 local debug = addonData.debug
 local settings = addonData.settings
 local summon = addonData.summon
+local raid = addonData.raid
 
 local chat = {
   init = function(_)
@@ -84,7 +85,11 @@ local chat = {
           gossip:add(player, event == "CHAT_MSG_WHISPER" )
         end
       elseif event == "CHAT_MSG_WHISPER" then
-        addonData.alt:whispered(player, msg)
+        if raid:isInvTrigger(msg) then
+          raid:whisperedTrigger(player)
+        else
+          addonData.alt:whispered(player, msg)
+        end
       end
     end
   end,

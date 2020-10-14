@@ -86,6 +86,19 @@ settings = {
       SteaSummonSave.altWhisper = L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."]
       SteaSummonSave.altGetOnlineWhisper = L["You are near the top of the summon queue. Get online now."]
     end
+
+    if SteaSummonSave.warlocksAssist == nil then
+      SteaSummonSave.warlocksAssist = true
+      SteaSummonSave.finalLeadership = true
+      SteaSummonSave.assistPlayers = {"Stea", "Stec"}
+      SteaSummonSave.raidLeaders = {"Stea", "Stec"}
+      SteaSummonSave.masterLoot = {"Stea", "Ninja"}
+      SteaSummonSave.autoInviteTriggers = {"inv", "invite"}
+      SteaSummonSave.autoInvite = 1
+      SteaSummonSave.autoAccept = 1
+      SteaSummonSave.delayLeadership = true
+      SteaSummonSave.convertToRaid = false
+    end
   end,
 
   reset = function()
@@ -125,6 +138,16 @@ settings = {
     SteaSummonSave.qboost = 4
     SteaSummonSave.altWhisper = L["You are in the summon queue. Whisper me an alt name if you don't want to wait online."]
     SteaSummonSave.altGetOnlineWhisper = L["You are near the top of the summon queue. Get online now."]
+    SteaSummonSave.warlocksAssist = true
+    SteaSummonSave.finalLeadership = true
+    SteaSummonSave.assistPlayers = {"Stea", "Stec"}
+    SteaSummonSave.raidLeaders = {"Stea", "Stec"}
+    SteaSummonSave.masterLoot = {"Stea", "Ninja"}
+    SteaSummonSave.autoInviteTriggers = {"inv", "invite"}
+    SteaSummonSave.autoInvite = 1
+    SteaSummonSave.autoAccept = 1
+    SteaSummonSave.delayLeadership = true
+    SteaSummonSave.convertToRaid = false
   end,
 
   saveOnLogout = function(self, event, ...)

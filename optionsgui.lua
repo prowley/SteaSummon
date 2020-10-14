@@ -610,6 +610,180 @@ local advanced = {
   },
 }
 
+local raid = {
+  name = L["Raid Management"],
+  type = "group",
+  order = -1,
+  args = {
+    header = {
+      order = 0,
+      type = "header",
+      name = L["Raid Management Options"]
+    },
+    desc = {
+      order = 1,
+      type = "description",
+      name = L["These options perform raid management actions to form your raid when you are raid leader."]
+    },
+    enableraid = {
+      order = 2,
+      name = L["Auto convert to raid"],
+      desc = L["When you form a party, convert it to a raid"],
+      type = "toggle",
+      width = "double",
+      descStyle = "inline",
+      set = function(_, val)
+        SteaSummonSave.convertToRaid = val
+      end,
+      get = function()
+        return SteaSummonSave.convertToRaid
+      end
+    },
+    warlocks = {
+      order = 6,
+      name = L["Warlocks get assist"],
+      desc = L["Give assist status to unbuffed summoners"],
+      type = "toggle",
+      width = "double",
+      descStyle = "inline",
+      set = function(_, val)
+        SteaSummonSave.warlocksAssist = val
+      end,
+      get = function()
+        return SteaSummonSave.warlocksAssist
+      end
+    },
+    final = {
+      order = 4,
+      name = L["Final raid leadership are named players"],
+      desc = L["When relinquishing leadership, ensure only the named players keep their roles"],
+      type = "toggle",
+      width = "full",
+      descStyle = "inline",
+      set = function(_, val)
+        SteaSummonSave.finalLeadership = val
+      end,
+      get = function()
+        return SteaSummonSave.finalLeadership
+      end
+    },
+    delayleader = {
+      order = 5,
+      name = L["Delay leadership transfer"],
+      desc = L["Only transfer leadership once the destination is unset and summons are over"],
+      type = "toggle",
+      width = "full",
+      descStyle = "inline",
+      set = function(_, val)
+        SteaSummonSave.delayLeadership = val
+      end,
+      get = function()
+        return SteaSummonSave.delayLeadership
+      end
+    },
+    assist = {
+      order = 9,
+      name = L["Players to give assist"],
+      desc = L["These players will be given raid assist when they join the raid"],
+      width = "double",
+      type = "input",
+      set = function(_, val)
+        SteaSummonSave.assistPlayers = addonData.util:multiLineToTable(addonData.util:case(val, ", "))
+      end,
+      get = function()
+        return addonData.util:tableToMultiLine(SteaSummonSave.assistPlayers)
+      end
+    },
+    leader = {
+      order = 7,
+      name = L["Players to promote to leader"],
+      desc = L["leaderdesc"],
+      width = "double",
+      type = "input",
+      set = function(_, val)
+        SteaSummonSave.raidLeaders = addonData.util:multiLineToTable(addonData.util:case(val, ", "))
+      end,
+      get = function()
+        return addonData.util:tableToMultiLine(SteaSummonSave.raidLeaders)
+      end
+    },
+    masterloot = {
+      order = 8,
+      name = L["Players to set as master looter"],
+      desc = L["mldesc"],
+      width = "double",
+      type = "input",
+      set = function(_, val)
+        SteaSummonSave.masterLoot = addonData.util:multiLineToTable(addonData.util:case(val, ", "))
+      end,
+      get = function()
+        return addonData.util:tableToMultiLine(SteaSummonSave.masterLoot)
+      end
+    },
+    invheader = {
+      order = 13,
+      type = "header",
+      name = L["Automatic Invite Options"]
+    },
+    invdesc = {
+      order = 14,
+      type = "description",
+      name = L["These options determine how automatic invite and accept works"]
+    },
+    acceptInvite = {
+      order = 16,
+      name = L["Enable accept invites"],
+      desc = L["Accept group invites to the raid"],
+      type = "select",
+      width = "normal",
+      values = {
+        [1] = L["Only Guild"],
+        [2] = L["Only Guild and Friends"],
+        [3] = L["Anyone"],
+        [4] = L["Off"]
+      },
+      set = function(_, val)
+        SteaSummonSave.autoAccept = val
+      end,
+      get = function()
+        return SteaSummonSave.autoAccept
+      end
+    },
+    autoInvite = {
+      order = 15,
+      name = L["Enable auto invite"],
+      desc = L["Allow people to request invites to the raid via whisper"],
+      type = "select",
+      width = "normal",
+      values = {
+        [1] = L["Only Guild"],
+        [2] = L["Only Guild and Friends"],
+        [3] = L["Anyone"],
+        [4] = L["Off"]
+      },
+      set = function(_, val)
+        SteaSummonSave.autoInvite = val
+      end,
+      get = function()
+        return SteaSummonSave.autoInvite
+      end
+    },
+    autoInviteTriggers = {
+      order = 17,
+      name = L["Auto invite players who whisper these trigger words"],
+      desc = L["These trigger words will trigger an invitation to the raid"],
+      width = "full",
+      type = "input",
+      set = function(_, val)
+        SteaSummonSave.autoInviteTriggers = addonData.util:multiLineToTable(val)
+      end,
+      get = function()
+        return addonData.util:tableToMultiLine(SteaSummonSave.autoInviteTriggers)
+      end
+    }
+  },
+}
+
 --- rummage for food and drink
 function rummage()
   out = ""
@@ -643,12 +817,14 @@ function optionsgui.init()
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonWords", summonwords, "ss-words")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonPrios", priorities, "ss-prio")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAlts", alts, "ss-alts")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonRaid", raid, "ss-raid")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAdv", advanced)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions(name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAlts", L["Alt Support"], name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonRaid", L["Raid Management"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonAdv", L["Advanced"], name)
 end
 
