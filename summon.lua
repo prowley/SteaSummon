@@ -29,6 +29,8 @@ local summon = {
   localLocks = 0,
   localClickers = 0,
   needBoost = false,
+  show = nil,
+  nextIdx = nil,
 
   ---------------------------------
   init = function(self)
@@ -118,7 +120,7 @@ local summon = {
   ---------------------------------
   waitRecord = function(self, player, time, status, prioReason, buffs, alts, altwhispered)
     local rec
-    rec = {player, time, status, prioReason, true, buffs or {}, alts or {}, altwhispered or ""}
+    rec = {player, time, status, prioReason, true, buffs or {}, alts or {}, altwhispered or 0}
     db("summon.waitlist.record","Created record {",
         self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true,
         self:recBuffs(rec), self:recAlts(rec), self:recAltWhispered(rec), "}")
@@ -176,7 +178,9 @@ local summon = {
   recTimeIncr = function(self, rec)
     self:listDirty(true)
     rec[2] = rec[2] + 1
-    db("summon.tick","setting record time value:", rec[2]) -- too verbose for summon.waitlist.record
+    rec[8] = rec[8] + 1
+    db("summon.tick","setting record time value:", rec[2], rec[8]) -- too verbose for summon.waitlist.record
+
     return rec[2]
   end,
 
@@ -301,7 +305,7 @@ local summon = {
     if val ~= nil then
       self:listDirty(true)
       db("summon.waitlist.record","setting record alt whispered:", val)
-      rec[8] = val
+      rec[8] = tonumber(val)
     end
     return rec[8]
   end,
@@ -567,6 +571,12 @@ local summon = {
           if SteaSummonToButton then SteaSummonToButton:Show() end
         end
 
+        if pos["width"] < 100 or pos["height"] < 28 then
+          SteaSummonContextMenuButton:Hide()
+        else
+          SteaSummonContextMenuButton:Show()
+        end
+
         if pos["width"] < 140 then
           SteaSummonFrame.location:Hide()
           SteaSummonFrame.destination:Hide()
@@ -602,7 +612,6 @@ local summon = {
       addonData.buttons[38].Button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
       addonData.buttons[38].Button:SetText(L["Next"])
 
-
       --- Resizable
       f:SetResizable(true)
       f:SetMinResize(80, 25)
@@ -625,31 +634,28 @@ local summon = {
       rb:SetScript("OnMouseUp", movefunc)
 
       if addonData.util:playerCanSummon() then
-        local summonTo = function(_, button)
-          if button == nil or button == "LeftButton" then
-            if not self.infoSend then
-              SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
-              addonData.gossip:destination(self.myZone, self.myLocation)
-            else
-              SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
-              addonData.gossip:destination("", "")
-            end
+        local summonTo = function()
+          if not self.infoSend then
+            SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Up")
+            addonData.gossip:destination(self.myZone, self.myLocation)
+          else
+            SteaSummonToButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
+            addonData.gossip:destination("", "")
           end
           self.infoSend = not self.infoSend
           addonData.gossip:nag(self.infoSend)
         end
 
         --- summon to button
-        local place = CreateFrame("Button", "SteaSummonToButton", SteaSummonFrame, "SecureActionButtonTemplate")
+        local place = CreateFrame("Button", "SteaSummonToButton", SteaSummonFrame, "TruncatedButtonTemplate")
         place:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetHighlightTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetPushedTexture("Interface\\Buttons\\UI-GuildButton-MOTD-Disabled")
         place:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 42, -8)
         place:SetSize(16,16)
-        place:RegisterForClicks("LeftButtonUp")
-        place:SetAttribute("type", "macro")
-        place:SetAttribute("macrotext", "")
+        place:RegisterForClicks()
         place:SetScript("OnMouseUp", summonTo)
+        place:SetScript("OnClick", summonTo)
         place:Hide()
       end
 
@@ -671,6 +677,16 @@ local summon = {
         f.shards.count:Show()
         self.shards = self:shardCount()
       end
+
+      --- context menu
+      f.context = CreateFrame("Button", "SteaSummonContextMenuButton",
+          SteaSummonFrame, "UIGoldBorderButtonTemplate")
+      f.context:SetWidth(10)
+      f.context:SetHeight(10)
+      f.context:SetText(">")
+      f.context:SetPoint("TOPLEFT","SteaSummonFrame","TOPRIGHT", -17, -7)
+      f.context:SetScript("OnMouseUp", function() addonData.appbutton:menu() end)
+      f.context:SetAlpha(0.5)
 
       --- Text items
 
@@ -709,6 +725,7 @@ local summon = {
     ------------------------------------------------------------
     --- update buttons
     local next = false
+    self.nextIdx = nil
     local listActive = false
     for i=1, 37 do
       local player
@@ -716,28 +733,14 @@ local summon = {
       local cancelClick
       local r,g,b,_ = 0.5, 0.5, 0.5
 
-      local SetMacro = function(index)
-        if (addonData.util:playerCanSummon()) then
-          if not self.isCasting then
-            if UnitPower("player") >= 300 then
-              local spell = GetSpellInfo(698) -- Ritual of Summoning
-              addonData.buttons[index].Button:SetAttribute("macrotext", "/target " .. player .. "\n/cast " .. spell)
-            else
-              local spell = GetSpellInfo(1454) -- Life tap rank 1, but we don't use rank
-              addonData.buttons[index].Button:SetAttribute("macrotext", "/cast " .. spell)
-            end
-          else
-            addonData.buttons[index].Button:SetAttribute("macrotext", "")
-          end
-        end
-      end
-
       if self.waiting[i] ~= nil then
         player = self:recPlayer(self.waiting[i])
         self:enableButton(i, true, player)
         addonData.buttons[i].Button:SetText(player)
 
         addonData.buttons[i].Priority["FS"]:SetText(self.buffLetter[self:recPrio(self.waiting[i])])
+
+        -- TODO: C_IncomingSummon.IncomingSummonStatus change status based on accept/decline
 
         if self:offline(player) or self:dead(player) then
           addonData.buttons[i].Button:SetEnabled(false)
@@ -750,7 +753,7 @@ local summon = {
           addonData.buttons[i].Button:SetEnabled(true)
           addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
 
-          SetMacro(i)
+          self:SetMacro(i, player)
 
           local z,l = self:getCurrentLocation()
 
@@ -767,8 +770,6 @@ local summon = {
                     self.summoningPlayer = player
                     addonData.gossip:destination(z, l)
                     self.hasSummoned = true
-                  else
-                    addonData.chat:whisper(L["Imagine not having enough mana."], self.me)
                   end
                 else
                   addonData.chat:say(SteaSummonSave.clicknag, player)
@@ -783,8 +784,6 @@ local summon = {
       end
 
       if self:listDirty() then
-        -- skip the rest of the visual updates
-
         --- flare size
         addonData.buttons[i].flare:SetBackdrop( {
           bgFile = "Interface\\TradeFrame\\UI-TradeFrame-Highlight",
@@ -793,9 +792,6 @@ local summon = {
         });
 
         --- Cancel Button
-        -- Can cancel from own UI
-        -- Cancelling self sends msg to others
-        -- If summoning warlock, can cancel and send msg to others
         cancelClick = function(_, button, worked)
           if button == "LeftButton" and worked then
             addonData.gossip:arrived(player)
@@ -808,13 +804,18 @@ local summon = {
         if self.waiting[i]  then
           --- Next Button
           if self:recStatus(self.waiting[i]) == "requested" then
-            if not next and (addonData.util:playerCanSummon() or self.isCasting) then
+            if not next and (addonData.util:playerCanSummon()) then
               next = true
-              SetMacro(38)
+              self.nextIdx = i
+              self:SetMacro(38, player)
               addonData.buttons[38].Button:SetScript("OnMouseUp", summonClick)
               addonData.buttons[38].Button:Show()
             end
             listActive = true
+          elseif next and self.isCasting then
+            addonData.buttons[38].Button:Show()
+            local nextplayer = self:recPlayer(self.waiting[self.nextIdx])
+            self:SetMacro(38, nextplayer)
           end
 
           --- Time
@@ -869,10 +870,22 @@ local summon = {
       if self:findWaitingPlayer(self.me) then
         show = true
       end
+    elseif addonData.settings:showNever() then
+      show = false
     end
 
     if self.numwaiting == 0 then
       self.hasSummoned = false
+    end
+
+    if show then
+      if self.show == false then
+        show = false
+      end
+    else
+      if self.show == true then
+        show = true
+      end
     end
 
     if show then
@@ -882,10 +895,58 @@ local summon = {
       end
     else
       SteaSummonFrame:Hide()
-      addonData.monitor:stop() -- stop ui update tick
+      if not self.isCasting then
+        addonData.monitor:stop() -- stop ui update tick
+      end
     end
 
-    self:listDirty(false)
+    if not self.isCasting then
+      self:listDirty(false)
+    end
+  end,
+
+  ---------------------------------
+  showSummonsToggle = function(self)
+    if not self then
+      self = addonData.summon
+    end
+    if SteaSummonFrame:IsVisible() then
+      if self.show == nil then
+        self.show = false
+      else
+        self.show = nil
+        if addonData.settings:showWindow() or (addonData.settings:showActive() and self.numwaiting > 0) then
+          self.show = false
+        elseif addonData.settings:showJustMe() then
+          if self:findWaitingPlayer(self.me) then
+            self.show = false
+          end
+        end
+      end
+    else -- not visible
+      self.show = true
+    end
+    db("summon.display", "setting show", self.show)
+    self:showSummons()
+  end,
+
+  ---------------------------------
+  SetMacro = function(self, index, player)
+    if (addonData.util:playerCanSummon()) then
+      if not self.isCasting then
+        if UnitPower("player") >= 300 then
+          --self.isCasting = true
+          local spell = GetSpellInfo(698) -- Ritual of Summoning
+          addonData.buttons[index].Button:SetAttribute("macrotext", "/stopmacro [channeling:"
+              .. spell .. "]\n/target " .. player .. "\n/cast " .. spell .. "\n/cqs")
+        else
+          local spell = GetSpellInfo(1454) -- Life tap rank 1, but we don't use rank
+          addonData.buttons[index].Button:SetAttribute("macrotext", "/cast " .. spell)
+        end
+      else
+        addonData.buttons[index].Button:SetAttribute("macrotext", "")
+      end
+    end
   end,
 
   ---------------------------------
@@ -1075,6 +1136,11 @@ local summon = {
   end,
 
   ---------------------------------
+  summonsReady = function(self)
+    return self.localLocks and self.localLocks + self.localClickers > 2 and self.zone ~= ""
+  end,
+
+  ---------------------------------
   shardCount = function(_)
     local count = 0
     if SteaSummonShardIcon then
@@ -1113,11 +1179,13 @@ local summon = {
     addonData.buttons[38].Button:Click("LeftButton")
   end,
 
+  ---------------------------------
   ClickSetDestination = function()
     if SteaSummonToButton then
-      SteaSummonToButton:Click("LeftButton")
+      SteaSummonToButton:Click()--"LeftButton")
     end
   end,
+
   ---------------------------------
   enableButton = function(self, idx, enable, player)
     if enable == nil then
@@ -1127,7 +1195,7 @@ local summon = {
     if enable then
       if not InCombatLockdown() then
         addonData.buttons[idx].Button:Show()
-        if self.hasSummoned or player == self.me or (self:isAtDestination() and addonData.util:playerCanSummon()) then
+        if player == self.me or ((self:isAtDestination() or self.zone == "") and addonData.util:playerCanSummon()) then
           addonData.buttons[idx].Cancel:Show()
         else
           addonData.buttons[idx].Cancel:Hide()
@@ -1361,7 +1429,71 @@ local summon = {
       if SteaSummonFrame then
         SteaSummonFrame.destination:SetText("")
       end
+      self.show = nil
       addonData.raid:relinquish()
+    end
+  end,
+
+  ---------------------------------
+  addMe = function(self)
+    self = addonData.summon
+    addonData.gossip:add(self.me, true)
+  end,
+
+  ---------------------------------
+  resetMe = function(self)
+    self = addonData.summon
+    addonData.gossip:status(self.me, "requested")
+  end,
+
+  ---------------------------------
+  cancelMe = function(self)
+    self = addonData.summon
+    addonData.gossip:arrived(self.me)
+  end,
+
+  ---------------------------------
+  clearList = function(self, really)
+    self = addonData.summon
+    if not really then
+      if not StaticPopupDialogs["STEASUMMON_CLEARLIST"] then
+        StaticPopupDialogs["STEASUMMON_CLEARLIST"] = {
+          text = L["clearlistdesc"],
+          button1 = ACCEPT,
+          button2 = CANCEL,
+          OnAccept = function()
+            self:clearList(true)
+          end,
+          timeout = 0,
+          whileDead = true,
+          hideOnEscape = true,
+        }
+      end
+      StaticPopup_Show("STEASUMMON_CLEARLIST")
+    else
+      local remv = {} -- don't remove things from tables you are iterating over...
+      for _,v in pairs(self.waiting) do
+        table.insert(remv, self:recPlayer(v))
+      end
+      for _,v in pairs(remv) do
+        addonData.gossip:arrived(v)
+      end
+    end
+  end,
+
+  ---------------------------------
+  setDestinationAsCurrent = function(self)
+    self = addonData.summon
+    addonData.gossip:destination(self.myZone, self.myLocation)
+  end,
+
+  ---------------------------------
+  destinationToggle = function(self)
+    self = addonData.summon
+    if self.zone == "" then
+      self:setDestinationAsCurrent()
+    else
+      addonData.gossip:destination("", "")
     end
   end,
 
@@ -1372,6 +1504,7 @@ local summon = {
 
   ---------------------------------
   isAtDestination = function(self)
+    self = addonData.summon
     return self.zone == self.myZone and self.location == self.myLocation
   end,
 

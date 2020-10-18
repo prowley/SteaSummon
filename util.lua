@@ -141,7 +141,7 @@ local util = {
     return inTable
   end,
 
-  playerClose = function(_, player)
+  playerClose = function(self, player)
     local me, _ = UnitName("player")
     player = strsplit("-", player) -- might turn up as player-server
     --print("player", player)
@@ -150,10 +150,9 @@ local util = {
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)
     end
 
-    if UnitInRange(player) then
+    if UnitInRange(player) or self:isNear(player) then
       return true
     end
-    --return addonData.raid.inzone[player]
   end,
 
   playerIsWarlock = function(_, player)
@@ -165,11 +164,32 @@ local util = {
   end,
 
   playerCanSummon = function(self, player)
+    self = addonData.util
     if player == nil then player = "player" end
     player = strsplit("-", player) -- might turn up as player-server
 
     local level = UnitLevel(player)
     return self:playerIsWarlock(player) and level >= 20
+  end,
+
+  distance = function(_, unit1, unit2)
+    local out
+    local y1, x1, _, instance1 = UnitPosition(unit1)
+    local y2, x2, _, instance2 = UnitPosition(unit2)
+    if instance1 == instance2 then
+      out = ((x2 - x1) ^ 2 + (y2 - y1) ^ 2) ^ 0.5
+    end
+    return out
+  end,
+
+  isNear = function(self, player)
+    local ret = false
+    local dist = self:distance("player", player)
+    if dist ~= nil and dist <= 40 then
+      db("util", "player detected by alt method")
+      ret = true
+    end
+    return ret
   end,
 }
 

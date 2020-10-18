@@ -1,6 +1,9 @@
 --localization file for english/United States
 local L = LibStub("AceLocale-3.0"):NewLocale("SteaSummon", "enUS", true)
 
+
+L["Language"] = true
+
 --- main.lua
 L["Summon Next"] = true
 L["Set Destination"] = true
@@ -54,19 +57,38 @@ L["Next"] = true
 L["Alt:"] = true
 
 --- optionsgui.lua
-L["Raid summon instructions"] = true
-L["a sentence that that posts to raid periodically"] = true
-L["Raid request for clickers"] = true
-L["a sentence that that posts to raid periodically when there not enough clickers to summon"] = true
-L["Summoning portal click nag"] = true
-L["a sentence that posts to say when you click the Next button while casting"] = true
-L["Raid summon instructions period (minutes)"] = true
-L["How long to wait between sending to chat"] = true
-L["Raid clicker request period (minutes)"] = true
-L["Say clicker request period (seconds)"] = true
-L["Maximum warlocks first"] = true
-L["Maximum summoners to be prioritized"] = true
 L["One button summoning, shared summoning list...    (Options for: %name)"] = true
+
+-- window
+
+L["Help"] = true
+L["plushelp"] = "Use this button to open the options tree below the main SteaSummon entry. There are many options."
+  .. " Take some time to go over the options in each section and set them as you like them. All options are per "
+  .. "character.\n\n"
+L["summonhelp"] = "The summon button will summon the next player with the 'requested' status. When summoning a player"
+  .. " the status changes to 'pending', and all players with SteaSummon can see the change in status. "
+  .. "Other warlocks with SteaSummon will automatically summon the next player after the one you are summoning."
+  .. " This button only appears for warlocks who are level 20 or higher, and when there are remaining people"
+  .. " in the list to summon.\n\nYou can set a key bind for this button in the main key bindings menu, under the "
+  .. "Addons category.\n\n"
+L["desthelp"] = "The destination for summons is set when you start to summon. It is also set when you click "
+  .. "the raid information button, and when you explicitly set it in the context menu. Everyone "
+  .. "in your raid with SteaSummon can see the destination.\n\nWhen a destination is set only warlocks at the "
+  .. "destination can manage the summon list, and only raiders at the destination will detect people nearby who "
+  .. "are on the summon list. Raiders can always manage their own entry in the summon list.\n\n"
+  .. "In addition to the list management restrictions, when a destination is set the number of warlocks, and the"
+  .. " number of people available to click portals, at the destination is shown to everyone with SteaSummon.\n\n"
+L["raidinfohelp"] = "The raid information button controls the periodic raid messages and it only displays for warlocks"
+  .. " who are level 20 or higher.\n\nThe first of the messages requests for more people to get to the destination "
+  .. "so that summoning can begin. This message triggers when there are less than 3 people or"
+  .. " there is no warlock at the destination.\n\nThe second message informs the raid that summons are available"
+  .. " and gives brief instructions for how to request, cancel, and refresh individual summons. This message "
+  .. "triggers when there are at least 3 people at the destination, and one of them is a warlock of level 20 or higher"
+  .. "\n\nYou can set a key bind for this button in the main key bindings menu, under the Addons category.\n\n"
+
+
+-- display
+L["Display"] = true
 L["General"] = true
 L["Window Options"] = true
 L["Change the scale of the interface. Set the window to always show before adjusting scale in order to see the results."] = true
@@ -85,6 +107,10 @@ L["Summon window scale"] = true
 L["wndscale"] = "Changes the scale of the window. It helps to have show always set to see the effect while setting."
 L["Summon list scale"] = true
 L["sumscale"] = "Changes the scale of the window contents. It helps to have show always set to see the effect while setting."
+L["Show minimap button"] = true
+L["Toggle whether to show the minimap button"] = true
+
+-- messages
 L["Messages"] = true
 L["Message Options"] = true
 L["msgopdesc"] = "These message options may include variable placeholders, prefixed by the % symbol, where dynamic text will be inserted. Blank lines disable the feature.\n\nThe variable options are:\n\n%p : player name\n%l : summon location\n%z : summon zone\n%t : the first trigger phrase"
@@ -94,13 +120,29 @@ L["Summon whisper notification text"] = true
 L["a sentence that is whispered to the person being summoned"] = true
 L["Summon portal click request in say"] = true
 L["a sentence that posts to say to request others click on the portal"] = true
+L["Raid summon instructions"] = true
+L["a sentence that that posts to raid periodically"] = true
+L["Raid request for clickers"] = true
+L["a sentence that that posts to raid periodically when there not enough clickers to summon"] = true
+L["Summoning portal click nag"] = true
+L["a sentence that posts to say when you click the Next button while casting"] = true
+L["Raid summon instructions period (minutes)"] = true
+L["How long to wait between sending to chat"] = true
+L["Raid clicker request period (minutes)"] = true
+L["Say clicker request period (seconds)"] = true
+
+-- triggers
 L["Trigger Phrases"] = true
 L["Triggers"] = true
 L["trigphrasedesc"] = "Trigger phrases are phrases that people can type into raid or party chat in order to get added to the summon list. Players can also type '-' (minus) and then a trigger phrase to be removed from the list."
 L["Trigger phrases for summon. One per line."] = true
 L["chat lines that will add a summon request for the raider"] = true
+
+-- priorities
 L["Priorities"] = true
 L["Priority Options"] = true
+L["Maximum warlocks first"] = true
+L["Maximum summoners to be prioritized"] = true
 L["These options determine where in the summon list players are inserted when they ask for a summon."] = true
 L["Warlocks first"] = true
 L["Put unbuffed summoners at the top of the list when they request a summon"] = true
@@ -177,3 +219,21 @@ L["These options determine how automatic invite and accept works"] = true
 --- gossip.lua
 L["There is a newer version available."] = true
 L["version"] = "Network communications is disabled. Your version of SteaSummon has an old network protocol version. You should update and restart your client now."
+
+-- minimap.lua
+L["SteaSummon Options"] = true
+L["Show/Hide Minimap Button"] = true
+L["Configuration"] = true
+L["Show/Hide Summon Window"] = true
+L["Key Bindings"] = true
+L["SteaSummon"] = true
+L["Options"] = true
+L["Toggle Raid Information"] = true
+L["Set/Unset Destination"] = true
+L["Request Summon"] = true
+L["Reset Summon"] = true
+L["Cancel Summon"] = true
+L["Relinquish Raid Lead"] = true
+L["Clear Summon List"] = true
+L["clearlistdesc"] = "Performing this action will clear the list for everyone else in the raid. You could just hide the window. Are you sure you want to continue?"
+L["Manage List"] = true

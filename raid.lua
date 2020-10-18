@@ -264,6 +264,7 @@ local raid = {
   end,
 
   relinquish = function(self)
+    self = addonData.raid
     if UnitIsGroupLeader("player") then
       local leader, ML = {}, {}
 

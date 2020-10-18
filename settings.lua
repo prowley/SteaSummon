@@ -27,6 +27,8 @@ summonWords[18] ="summons avail?"
 summonWords[19] ="summons avail"
 summonWords[20] ="summons ready?"
 summonWords[21] ="summons ready"
+summonWords[22] ="123 summons"
+summonWords[23] ="123 summon"
 
 settings = {
   init = function(self)

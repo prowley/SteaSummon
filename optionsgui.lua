@@ -2,6 +2,7 @@ local _, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 
 local optionsgui = {
+  showID = nil,
   options = {
     type = "group",
     childGroups = "tab",
@@ -11,6 +12,7 @@ local optionsgui = {
         image = "Interface/ICONS/Spell_Shadow_Twilight",
         imageCoords = { 0, 1, 0, 1 },
         type = "description",
+        fontSize = "medium",
         name = function()
           local name, _ = UnitName("player")
           local pats = { ["%%name"] = name }
@@ -18,137 +20,180 @@ local optionsgui = {
           return tstring(s, pats)
         end
       },
-      --[[general = {
-        name = L["General"],
-        type = "group",
-        order = 0,
-        args = {]]
-          windheader = {
-            order = 0,
-            type = "header",
-            name = L["Window Options"]
-          },
-          wnddesc = {
-            order = 4,
-            type = "description",
-            width = "1.5",
-            name = L["Change the scale of the interface. Set the window to always show before adjusting scale in order to see the results."]
-          },
-          enable = {
-            order = 6,
-            name = L["Show Summon Window"],
-            desc = "Toggles the summon window",
-            type = "select",
-            width = "double",
-            descStyle = "inline",
-            values = {
-              [1] = L["Always"],
-              [2] = L["Only when summons are active"],
-              [3] = L["Only when I am in the active summon list"],
-              [4] = L["Never"]
-            },
-            set = function(_, val)
-              SteaSummonSave.show = val
-              addonData.summon:showSummons() -- kick off change in display
-            end,
-            get = function()
-              return SteaSummonSave.show
-            end,
-          },
-          wndshowdesc = {
-            order = 7,
-            type = "description",
-            width = "normal",
-            name = L["wnddesc"]
-          },
-          --[[sumheader = {
-            order = 7,
-            type = "header",
-            name = "Summon Options"
-          },]]
-          savedesc = {
-            order = 10,
-            type = "description",
-            width = "normal",
-            name = L["savedesc"]
-          },
-          keep = {
-            order = 9,
-            type = "range",
-            name = L["Summon list save time (in minutes)"],
-            desc = L["How long to preserve the summon list between logins"],
-            min = 0,
-            max = 300,
-            softMin = 0,
-            softMax = 59,
-            step = 1,
-            bigStep = 1,
-            width = "double",
-            set = function(_, val)
-              SteaSummonSave.waitingKeepTime = val
-            end,
-            get = function()
-              return SteaSummonSave.waitingKeepTime
-            end,
-          },
-          windowSize = {
-            order = 2,
-            type = "range",
-            name = L["Summon window scale"],
-            desc = L["wndscale"],
-            min = 0.1,
-            max = 2,
-            softMin = 0.3,
-            softMax = 3,
-            step = 0.1,
-            bigStep = 0.1,
-            width = "normal",
-            isPercent = true,
-            set = function(_, val)
-              SteaSummonSave.windowSize = val
-              SteaSummonFrame:SetScale(val)
-            end,
-            get = function()
-              return SteaSummonSave.windowSize
-            end,
-          },
-          listSize = {
-            order = 3,
-            type = "range",
-            name = L["Summon list scale"],
-            desc = L["sumscale"],
-            min = 0.1,
-            max = 3,
-            softMin = 0.3,
-            softMax = 3,
-            step = 0.1,
-            bigStep = 0.1,
-            width = "normal",
-            isPercent = true,
-            set = function(_, val)
-              SteaSummonSave.listSize = val
-              SteaSummonButtonFrame:SetScale(val)
-            end,
-            get = function()
-              return SteaSummonSave.listSize
-            end,
-          },
-        --},
+      title = {
+        name = L["Help"],
+        type = "header",
+        order = 1,
+      },
+      infodesc = {
+        order = 2,
+        image = "Interface/Buttons/UI-PlusButton-Up",
+        imageCoords = { 0, 1, 0, 1 },
+        type = "description",
+        fontSize = "medium",
+        name = L["plushelp"]
+      },
+      summondesc = {
+        order = 3,
+        image = "Interface/ICONS/Spell_Shadow_Twilight",
+        imageCoords = { 0, 1, 0, 1 },
+        type = "description",
+        fontSize = "medium",
+        name = L["summonhelp"]
+      },
+      destdesc = {
+        order = 4,
+        image = "Interface\\Buttons\\UI-HomeButton",
+        imageCoords = { 0, 1, 0, 1 },
+        type = "description",
+        fontSize = "medium",
+        name = L["desthelp"]
+      },
+      raiddesc = {
+        order = 5,
+        image = "Interface\\Buttons\\UI-GuildButton-MOTD-Up",
+        imageCoords = { 0, 1, 0, 1 },
+        type = "description",
+        fontSize = "medium",
+        name = L["raidinfohelp"]
       },
     },
+  },
+}
+
+
+local general = {
+  name = L["Display"],
+  type = "group",
+  order = 0,
+  args = {
+    wnddesc = {
+      order = 4,
+      type = "description",
+      width = "1.5",
+      name = L["Change the scale of the interface. Set the window to always show before adjusting scale in order to see the results."]
+    },
+    enable = {
+      order = 6,
+      name = L["Show Summon Window"],
+      desc = "Toggles the summon window",
+      type = "select",
+      width = "double",
+      descStyle = "inline",
+      values = {
+        [1] = L["Always"],
+        [2] = L["Only when summons are active"],
+        [3] = L["Only when I am in the active summon list"],
+        [4] = L["Never"]
+      },
+      set = function(_, val)
+        SteaSummonSave.show = val
+        addonData.summon:showSummons() -- kick off change in display
+      end,
+      get = function()
+        return SteaSummonSave.show
+      end,
+    },
+    wndshowdesc = {
+      order = 7,
+      type = "description",
+      width = "normal",
+      name = L["wnddesc"]
+    },
+    --[[sumheader = {
+      order = 7,
+      type = "header",
+      name = "Summon Options"
+    },]]
+    savedesc = {
+      order = 10,
+      type = "description",
+      width = "normal",
+      name = L["savedesc"]
+    },
+    keep = {
+      order = 9,
+      type = "range",
+      name = L["Summon list save time (in minutes)"],
+      desc = L["How long to preserve the summon list between logins"],
+      min = 0,
+      max = 300,
+      softMin = 0,
+      softMax = 59,
+      step = 1,
+      bigStep = 1,
+      width = "double",
+      set = function(_, val)
+        SteaSummonSave.waitingKeepTime = val
+      end,
+      get = function()
+        return SteaSummonSave.waitingKeepTime
+      end,
+    },
+    windowSize = {
+      order = 2,
+      type = "range",
+      name = L["Summon window scale"],
+      desc = L["wndscale"],
+      min = 0.1,
+      max = 2,
+      softMin = 0.3,
+      softMax = 3,
+      step = 0.1,
+      bigStep = 0.1,
+      width = "normal",
+      isPercent = true,
+      set = function(_, val)
+        SteaSummonSave.windowSize = val
+        SteaSummonFrame:SetScale(val)
+      end,
+      get = function()
+        return SteaSummonSave.windowSize
+      end,
+    },
+    listSize = {
+      order = 3,
+      type = "range",
+      name = L["Summon list scale"],
+      desc = L["sumscale"],
+      min = 0.1,
+      max = 3,
+      softMin = 0.3,
+      softMax = 3,
+      step = 0.1,
+      bigStep = 0.1,
+      width = "normal",
+      isPercent = true,
+      set = function(_, val)
+        SteaSummonSave.listSize = val
+        SteaSummonButtonFrame:SetScale(val)
+      end,
+      get = function()
+        return SteaSummonSave.listSize
+      end,
+    },
+    minimap = {
+      order = -1,
+      name = L["Show minimap button"],
+      desc = L["Toggle whether to show the minimap button"],
+      type = "toggle",
+      width = "double",
+      descStyle = "inline",
+      set = function(_, val)
+        addonData.appbutton:toggle(not val)
+      end,
+      get = function()
+        return not SteaSummonSave.ldb.profile.minimap.hide
+      end
+    },
   }
---}
+}
 
 local chat = {
   name = L["Messages"],
   type = "group",
   order = 4,
   args = {
-    header = {
-      order = 8,
-      type = "header",
-      name = L["Message Options"]
-    },
     desc = {
       order = 9,
       type = "description",
@@ -272,11 +317,6 @@ local summonwords = {
   type = "group",
   order = 5,
   args = {
-    header = {
-      order = 0,
-      type = "header",
-      name = L["Trigger Phrases"]
-    },
     desc = {
       order = 1,
       type = "description",
@@ -304,11 +344,6 @@ local priorities = {
   type = "group",
   order = 6,
   args = {
-    header = {
-      order = 0,
-      type = "header",
-      name = L["Priority Options"]
-    },
     desc = {
       order = 1,
       type = "description",
@@ -397,11 +432,6 @@ local alts = {
   type = "group",
   order = 6,
   args = {
-    header = {
-      order = 0,
-      type = "header",
-      name = L["Alt Character Options"]
-    },
     desc = {
       order = 1,
       type = "description",
@@ -499,9 +529,8 @@ local alts = {
       order = 7,
       name = L["Automatically register your characters for alt support"],
       desc = L["These are the characters you might be on when your summon is ready"],
-      width = "full",
+      width = "double",
       type = "input",
-      multiline = 5,
       set = function(_, val)
         SteaSummonSave.alttoons = addonData.util:multiLineToTable(addonData.util:case(val, "\n"))
       end,
@@ -517,11 +546,6 @@ local advanced = {
   type = "group",
   order = -1,
   args = {
-    header = {
-      order = 0,
-      type = "header",
-      name = L["Advanced Options"]
-    },
     desc = {
       order = 1,
       type = "description",
@@ -615,11 +639,6 @@ local raid = {
   type = "group",
   order = -1,
   args = {
-    header = {
-      order = 0,
-      type = "header",
-      name = L["Raid Management Options"]
-    },
     desc = {
       order = 1,
       type = "description",
@@ -808,11 +827,20 @@ function rummage()
   return out
 end
 
-function optionsgui.init()
+function optionsgui:show()
+  if optionsgui.showID and not InCombatLockdown() then
+    InterfaceOptionsFrame_Show()
+    InterfaceOptionsFrame_OpenToCategory(optionsgui.showID)
+  end
+end
+
+function optionsgui:init()
   local me = UnitName("player")
   local name = "SteaSummon (" .. me .. ")"
+  optionsgui.showID = name
 
   LibStub("AceConfig-3.0"):RegisterOptionsTable(name, optionsgui.options, "ss")
+  LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonDisplay", general, "ss-display")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonMessages", chat, "ss-chat")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonWords", summonwords, "ss-words")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonPrios", priorities, "ss-prio")
@@ -820,6 +848,7 @@ function optionsgui.init()
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonRaid", raid, "ss-raid")
   LibStub("AceConfig-3.0"):RegisterOptionsTable("SteaSummonAdv", advanced)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions(name)
+  LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonDisplay", L["Display"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonMessages", L["Messages"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonWords", L["Triggers"], name)
   LibStub("AceConfigDialog-3.0"):AddToBlizOptions("SteaSummonPrios", L["Priorities"], name)

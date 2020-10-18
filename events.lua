@@ -3,7 +3,72 @@
 local addonName, addonData = ...
 local call = {}
 
-function start()
+local frame
+
+local function callback(self, event, ...)
+  if call[event] ~= nil then
+    call[event](self, event, ...)
+  end
+end
+
+local function playerEnter()
+  db("event.event","player entering world")
+
+  -- register events
+  for k,_ in pairs(call) do
+    if k ~= "ADDON_LOADED" then
+      db("event.event","registering event", k)
+      frame:RegisterEvent(k)
+    end
+  end
+end
+
+local function loaded(_, event, ...)
+  local name = ...
+
+  -- if it this addon
+  if (name == addonName) then
+    -- this the first point that settings are loaded, and therefore the "debug" flag
+    -- so db won't log anything before now, also not safe to call category debug before now
+    addonData.debug:init()
+    addonData.debug:printBelow(addonData.debug.loglevel + 1) -- I want to see the debug module debug
+    addonData.debug:logBelow(addonData.debug.loglevel + 1) -- also want it logged
+
+    addonData.debug:registerCategory("event.event")
+    db("event.event", "------------- NEW SESSION -------------")
+    db("event.event", "loaded", event, ...)
+
+    -- init modules, some of these just set up debug categories
+    addonData.settings:init()
+    addonData.optionsgui:init()
+    addonData.gossip:init()
+    addonData.raid:init()
+    addonData.monitor:init()
+    addonData.summon:init()
+    addonData.chat:init()
+    addonData.util:init()
+    addonData.buffs:init()
+    addonData.alt:init()
+    addonData.appbutton:init()
+
+    -- wait to set up debug categories until all categories are registered
+    -- otherwise the category or its children may not be registered for chat debug messages
+    addonData.debug:chatCat("summon.waitlist")
+    addonData.debug:chatCat("summon.spellcast")
+    addonData.debug:chatCat("summon.display")
+    addonData.debug:chatCat("gossip")
+    addonData.debug:chatCat("raid")
+    addonData.debug:chatCat("alt")
+    addonData.debug:chatCat("buffs")
+    addonData.debug:chatCat("minimap")
+    addonData.debug:chatCat("util")
+    addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
+
+    cprint("loaded version", GetAddOnMetadata(addonName, "Version"))
+  end
+end
+
+local function start()
   db("start")
 
   -- build callback table
@@ -43,62 +108,4 @@ function start()
   frame:SetScript("OnEvent", callback)
 end
 
-function callback(self, event, ...)
-  if call[event] ~= nil then
-    call[event](self, event, ...)
-  end
-end
-
-function playerEnter()
-  db("event.event","player entering world")
-
-  -- register events
-  for k,_ in pairs(call) do
-    if k ~= "ADDON_LOADED" then
-      db("event.event","registering event", k)
-      frame:RegisterEvent(k)
-    end
-  end
-end
-
-function loaded(_, event, ...)
-  local name = ...
-
-  -- if it this addon
-  if (name == addonName) then
-    -- this the first point that settings are loaded, and therefore the "debug" flag
-    -- so db won't log anything before now, also not safe to call category debug before now
-    addonData.debug:init()
-    addonData.debug:printBelow(addonData.debug.loglevel + 1) -- I want to see the debug module debug
-    addonData.debug:logBelow(addonData.debug.loglevel + 1) -- also want it logged
-
-    addonData.debug:registerCategory("event.event")
-    db("event.event", "------------- NEW SESSION -------------")
-    db("event.event", "loaded", event, ...)
-
-    -- init modules, some of these just set up debug categories
-    addonData.settings:init()
-    addonData.optionsgui:init()
-    addonData.gossip:init()
-    addonData.raid:init()
-    addonData.monitor:init()
-    addonData.summon:init()
-    addonData.chat:init()
-    addonData.util:init()
-    addonData.buffs:init()
-    addonData.alt:init()
-
-    -- wait to set up debug categories until all categories are registered
-    -- otherwise the category or its children may not be registered for chat debug messages
-    addonData.debug:chatCat("summon.waitlist")
-    addonData.debug:chatCat("summon.spellcast")
-    addonData.debug:chatCat("summon.display")
-    addonData.debug:chatCat("gossip")
-    addonData.debug:chatCat("raid")
-    addonData.debug:chatCat("alt")
-    addonData.debug:chatCat("buffs")
-    addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
-
-    cprint("loaded, version", GetAddOnMetadata(addonName, "Version"))
-  end
-end
+addonData.start = start

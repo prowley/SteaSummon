@@ -182,13 +182,17 @@ local gossip = {
   end,
 
   ---------------------------------
+  summonQuorum = function(self)
+    return ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
+          (self.locksCount and self.atDestCount - self.locksCount > 2))
+  end,
+
+  ---------------------------------
   raidInfo = function(self)
     self = addonData.gossip
 
     if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
-      ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
-          (self.locksCount and self.atDestCount - self.locksCount > 2)) and
-            addonData.summon.zone ~= ""
+      self:summonQuorum() and addonData.summon.zone ~= ""
     then
       local msg = SteaSummonSave.raidinfo
       local z, l = addonData.summon:getDestination()
@@ -211,9 +215,7 @@ local gossip = {
     self = addonData.gossip
 
     if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
-        not ((self.adjLocks and self.adjLocks + self.adjClicks > 2) or
-          (self.locksCount and self.atDestCount - self.locksCount > 2)) and
-            addonData.summon.zone ~= ""
+        not self:summonQuorum() and addonData.summon.zone ~= ""
     then
       db("gossip", "clicker nag")
       local msg = SteaSummonSave.clickersnag
@@ -242,7 +244,7 @@ local gossip = {
       end
     end
 
-    for i, v in pairs(killList) do
+    for _, v in pairs(killList) do
       table.remove(self.netList, v)
     end
   end,
@@ -458,8 +460,10 @@ local gossip = {
   altWhispered = function(self, player, alt)
     local rec = addonData.summon:findWaitingPlayer(player)
 
-    if self:isLeader() then
+    if self:isLeader() and rec then
       self:SendCommMessage(self.channel, "wsp " .. player .. "+" .. alt, self:groupText())
+    else
+      self:SendCommMessage(self.channel, "wsp " .. player .. "+" .. alt, "WHISPER", self.netList[1])
     end
   end,
 
@@ -705,6 +709,13 @@ local gossip = {
 
     db ("gossip.event", "message", cmd, "from", sender, "payload:", subcmd)
 
+    local function senderIsLeader()
+      if self.inInit then
+        return false
+      end
+      return sender == self.netList[1]
+    end
+
     -- While we are in init things don't stop happening, but we are not in a position
     -- to properly respond to those things yet, so we store messages other than those
     -- pertinent to init and we replay those later once we are properly initialized
@@ -736,6 +747,8 @@ local gossip = {
 
       --- add record
     elseif cmd == "adrec" then
+      if not senderIsLeader() then return end
+
       local i, rec = strsplit("_", subcmd)
       db("gossip", "<< add record <<", rec)
       local ununmarshalledRec = addonData.summon:recUnMarshal(rec)
@@ -806,6 +819,9 @@ local gossip = {
       if rec then
         addonData.summon:recAltWhispered(rec, alt)
       end
+      if self:isLeader() then
+        self:altWhispered(player, alt)
+      end
 
       --- leave netgroup (turned off comms or had a bad version)
     elseif cmd == "retire" then
@@ -820,6 +836,8 @@ local gossip = {
 
       --- destination list
     elseif cmd == "dl" then
+      if not senderIsLeader() then return end
+
       db("gossip", "<< at destination list <<")
       self.atDest = addonData.util:multiLineToMap(subcmd, "\n")
       self.atDestCount = 0
@@ -831,6 +849,8 @@ local gossip = {
       db("gossip", "at destination count:", self.atDestCount)
 
     elseif cmd == "l" then
+      if not senderIsLeader() then return end
+
       db("gossip", "<< waiting list <<", subcmd)
       addonData.util:unmarshalWaitingTable(subcmd)
       self:replayMessageLog(self.replayLog)
@@ -979,7 +999,7 @@ local gossip = {
         self:postInit()
       end
 
-      --- SteaSummon version broadcast GUILD
+      --- SteaSummon version broadcast
     elseif cmd=="version" then
       if sender == self.me then -- on replay
         db("gossip", "ignored version request from myself")
