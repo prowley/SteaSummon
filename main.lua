@@ -2,12 +2,8 @@
 
 -- TODO: add type down search of list
 -- TODO: add sound when next button pops
--- TODO: offline on alt support
--- TODO: raid lead/assist function
--- TODO: nag for assist
--- TODO: auto life tap, maybe eat/drink too?
 -- TODO: party/raid confirmation of add
--- TODO: location based summon phrases
+-- TODO: location based summon phrases, channels
 
 --- Visual
 -- TODO: add fancy spell casting next button
@@ -15,12 +11,12 @@
 
 -- notes:
 --
--- ritual of summoning icon: ../ICONS/Spell_Shadow_Twilight
--- soul shard icon: ../ICONS/INV_Misc_Gem_Amethyst_02
--- gold ring (minimap frame button): ../COMMON/BlueMenuRing.png
--- gold ring (minimap looks closer): ../COMMON/RingBorder
--- gold ring: ../COMMON/GoldRing
--- indicators (round): ../COMMON/idnicator-(Red,Yellow,Gray,Green)
+-- ritual of summoning icon: Interface/ICONS/Spell_Shadow_Twilight
+-- soul shard icon: Interface/ICONS/INV_Misc_Gem_Amethyst_02
+-- gold ring (minimap frame button): Interface/COMMON/BlueMenuRing.png
+-- gold ring (minimap looks closer): Interface/COMMON/RingBorder
+-- gold ring: Interface/COMMON/GoldRing
+-- indicators (round): Interface/COMMON/indicator-(Red,Yellow,Gray,Green)
 -- button fram UI-Quickslot /-Depress
 -- sound: RAID_WARNING = 8959,
 
@@ -32,15 +28,7 @@ BINDING_HEADER_STEASUMMON = "SteaSummon"
 _G["BINDING_NAME_CLICK SteaSummonButton38:LeftButton"] = L["Summon Next"]
 _G["BINDING_NAME_CLICK SteaSummonToButton:LeftButton"] = L["Set Destination"]
 
-SteaSummon = {}
-
-function SteaSummon:ClickNext()
-    addonData.summon:ClickNext()
-end
-
-function SteaSummon:ClickSetDestination()
-    addonData.summon:ClickSetDestination()
-end
+local SteaSummon = {}
 
 -- colored print to chat window
 function cprint(...)
@@ -55,4 +43,4 @@ function tstring(str, patterns)
     return str
 end
 
-start()
+addonData.start()

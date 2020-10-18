@@ -4,10 +4,13 @@ local summon
 local util
 local chat
 local gossip
+local monitor
 
 local alt = {
   me = "",
   playersInConversation = {},
+
+  -- TODO: add whisper alt function for the summon buttons
 
   init = function(self)
     addonData.debug:registerCategory("alt")
@@ -16,6 +19,8 @@ local alt = {
     util = addonData.util
     chat = addonData.chat
     gossip = addonData.gossip
+    monitor = addonData.monitor
+    monitor:create(60, self.listWhisper)
   end,
 
   newPlayer = function(self, player)
@@ -36,8 +41,15 @@ local alt = {
     local i = 1
     local boosted = 0
 
-    if upTo == nil then
+    -- don't whisper if we can't summon
+    if not summon:summonsReady() or summon.numwaiting == 0 then
+      return
+    end
+
+    if upTo == nil and boost ~= nil then
       upTo = summon.numwaiting
+    elseif upTo == nil then
+      upTo = SteaSummonSave.qspot
     end
 
     db("alt", "checking list for offlines with alts")
@@ -46,14 +58,16 @@ local alt = {
       local player = summon:recPlayer(rec)
 
       db("alt", "player", player)
-      if summon:recStatus(rec) == "offline" and summon:recAltWhispered(rec) == "" and #summon:recAlts(rec) > 0 then
+
+      if summon:recStatus(rec) == "offline" and #summon:recAlts(rec) > 0
+          and (summon:recAltWhispered(rec) == 0 or summon:recAltWhispered(rec) > 60) then
         db("alt", "offline with alts")
         for _,alt in pairs(summon:recAlts(rec)) do
           db("alt", "whispering", alt)
           chat:whisper(SteaSummonSave.altGetOnlineWhisper, alt)
-          summon:recAltWhispered(rec, summon:recAltWhispered(rec) .. alt .. ",")
-          gossip:altWhispered(summon:recPlayer(rec), alt)
         end
+        summon:recAltWhispered(rec, 0)
+        gossip:altWhispered(summon:recPlayer(rec), 0)
         boosted = boosted + 1
         if boost and boosted == boost then
           break
