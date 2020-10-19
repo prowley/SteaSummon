@@ -31,6 +31,7 @@ local summon = {
   needBoost = false,
   show = nil,
   nextIdx = nil,
+  countSummoned = 0,
 
   ---------------------------------
   init = function(self)
@@ -48,6 +49,19 @@ local summon = {
     self.waiting = SteaSummonSave.waiting
     self.numwaiting = #self.waiting
     self.postInit = true
+
+    -- fix up for old version things (they could be lurking in alts for months)
+    -- and before the table gets cleared something may access the data and blow up
+    if self.waiting then
+      for _,v in pairs(self.waiting) do
+        -- make sure altwhispered is numeric (was a string)
+        if #v > 6 then -- have alts
+          if type(self:recAltWhispered(v) == "string") then
+            self:recAltWhispered(v, 0)
+          end
+        end
+      end
+    end
 
     -- there seems to be no good event/time to check if we are in a group
     -- group roster changes fail to tell us when we are NOT in a group
@@ -120,7 +134,17 @@ local summon = {
   ---------------------------------
   waitRecord = function(self, player, time, status, prioReason, buffs, alts, altwhispered)
     local rec
-    rec = {player, time, status, prioReason, true, buffs or {}, alts or {}, altwhispered or 0}
+    assert(player)
+    rec = {
+      player,
+      time or 0,
+      status or "requested",
+      prioReason or "Normal",
+      true, -- dirty flag
+      buffs or {},
+      alts or {},
+      altwhispered or 0
+    }
     db("summon.waitlist.record","Created record {",
         self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true,
         self:recBuffs(rec), self:recAlts(rec), self:recAltWhispered(rec), "}")
@@ -481,9 +505,9 @@ local summon = {
     for _, player in pairs(players) do
       local z, l = self:getCurrentLocation()
       if z == self.zone and l == self.location -- at destination, anyone can report
-          or (self.zone == "" and self.location == "") -- no destination, anyone can report
+          or (self.countSummoned > 0 and self.zone == "" and self.location == "") -- no destination, anyone can report
           or player == self.summoningPlayer then -- summoner can report
-        addonData.gossip:arrived(player) -- let everyone else know
+        addonData.gossip:arrived(player, false) -- let everyone else know
       end
     end
 
@@ -571,7 +595,7 @@ local summon = {
           if SteaSummonToButton then SteaSummonToButton:Show() end
         end
 
-        if pos["width"] < 100 or pos["height"] < 28 then
+        if SteaSummonContextMenuButton and pos["width"] < 100 or pos["height"] < 28 then
           SteaSummonContextMenuButton:Hide()
         else
           SteaSummonContextMenuButton:Show()
@@ -794,7 +818,7 @@ local summon = {
         --- Cancel Button
         cancelClick = function(_, button, worked)
           if button == "LeftButton" and worked then
-            addonData.gossip:arrived(player)
+            addonData.gossip:arrived(player, true)
             db("summon.display","cancelling", player)
           end
         end
@@ -1264,7 +1288,14 @@ local summon = {
   end,
 
   ---------------------------------
-  arrived = function(self, player)
+  arrived = function(self, player, cancel)
+    if cancel ~= null and not cancel then
+      local rec = self:findWaitingPlayer(player)
+      if rec then
+        self.countSummoned = self.countSummoned + 1
+      end
+    end
+
     self:remove(player)
   end,
 
@@ -1416,6 +1447,7 @@ local summon = {
 
     db("summon.misc", "setting destination: ", location, " in ", zone)
     if location and location ~= "" and zone and zone ~= "" then
+      self.countSummoned = 0
       if SteaSummonFrame then
         local pat = {["%%zone"] = self.zone, ["%%subzone"] = self.location}
         local s = L["Destination: %subzone, %zone"]
@@ -1449,7 +1481,7 @@ local summon = {
   ---------------------------------
   cancelMe = function(self)
     self = addonData.summon
-    addonData.gossip:arrived(self.me)
+    addonData.gossip:arrived(self.me, true)
   end,
 
   ---------------------------------
@@ -1476,8 +1508,9 @@ local summon = {
         table.insert(remv, self:recPlayer(v))
       end
       for _,v in pairs(remv) do
-        addonData.gossip:arrived(v)
+        addonData.gossip:arrived(v, true)
       end
+      self.countSummoned = 0
     end
   end,
 
