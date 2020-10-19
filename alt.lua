@@ -125,11 +125,11 @@ local alt = {
   end,
 
   askForAlts = function(_, player)
-    local idx = summon:findWaitingPlayerIdx(player)
-
-    if gossip.netList[player] then
-      --return -- addon users can configure if they want alts
+    if summon.zone == "" then
+      return -- don't whisper people if not indicating we are going to summon
     end
+
+    local idx = summon:findWaitingPlayerIdx(player)
 
     if SteaSummonSave.altbuffed and #summon:recBuffs(summon.waiting[idx]) == 0 then
       return

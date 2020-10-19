@@ -370,25 +370,35 @@ local gossip = {
   end,
 
   ---------------------------------
-  arrived = function(self, player)
+  arrived = function(self, player, cancel)
     self:offlineCheck()
+
+    local cancelText = "true"
+
+    if cancel == nil then
+      cancel = true
+    end
+
+    if not cancel then
+      cancelText = "false"
+    end
 
     if self:isLeader() then
       if addonData.summon:findWaitingPlayerIdx(player) then
-        addonData.summon:arrived(player)
+        addonData.summon:arrived(player, cancel)
         if self:noComms() then
           return
         end
-        db("gossip", ">> arrived >>", self:groupText(), player)
-        self:SendCommMessage(self.channel, "a " .. player, self:groupText())
+        db("gossip", ">> arrived >>", self:groupText(), player, cancel)
+        self:SendCommMessage(self.channel, "a " .. player .. " " .. cancelText, self:groupText())
         addonData.alt:listShorter()
       end
     else
       if self:noComms() then
         return
       end
-      db("gossip", ">> arrived >> WHISPER", player)
-      self:SendCommMessage(self.channel, "a " .. player, "WHISPER", self.netList[1])
+      db("gossip", ">> arrived >> WHISPER", self.netList[1], player)
+      self:SendCommMessage(self.channel, "a " .. player .. " ".. cancelText, "WHISPER", self.netList[1])
     end
   end,
 
@@ -522,7 +532,7 @@ local gossip = {
       return
     end
     if name == self.me then
-      summonTest = nil
+      summonTest = "player"
     else
       summonTest = name
     end
@@ -548,7 +558,7 @@ local gossip = {
   end,
 
   ---------------------------------
-  setClicks = function(self, locks, clickers)
+  setClicks = function(self, locks, clickers, noSend)
     local locksCount = self.locksCount
     local clicksCount = self.atDestCount - self.locksCount
 
@@ -573,7 +583,13 @@ local gossip = {
       db('gossip', "fished adjusted count: locks", locksCount, "clicks", clicksCount, "total", locksCount + clicksCount)
       self.adjLocks = locksCount
       self.adjClicks = clicksCount
-      self:clicks(locksCount, clicksCount)
+      if not self:isLeader() then
+        self:clicks(locksCount, clicksCount)
+      end
+    end
+
+    if self:isLeader() and not noSend then
+      self:clicks(self.adjLocks, self.adjClicks)
     end
   end,
 
@@ -592,7 +608,7 @@ local gossip = {
       if self:noComms() then
         return
       end
-      db("gossip", ">> clickers >> WHISPER", self:groupText(), self.netList[1], locks, clickers)
+      db("gossip", ">> clickers >> WHISPER", self.netList[1], locks, clickers)
       self:SendCommMessage(self.channel, "c " .. locks .. "+" .. clickers, "WHISPER", self.netList[1])
     end
   end,
@@ -696,8 +712,8 @@ local gossip = {
   end,
 
   ---------------------------------
-  receive = function(self, msg, _, sender, ... )
-    local cmd, subcmd = strsplit(" ", msg)
+  receive = function(self, msg, dist, sender, ... )
+    local cmd, subcmd = strsplit(" ", msg, 2)
     local okForInit = {
       ["netlist"] = 1,
       ["e"] = 1,
@@ -707,7 +723,7 @@ local gossip = {
       ["retire"] = 1,
       ["v"] = 1}
 
-    db ("gossip.event", "message", cmd, "from", sender, "payload:", subcmd)
+    db ("gossip.event", "message", cmd, "from", sender, "channel", dist, "payload:", subcmd)
 
     local function senderIsLeader()
       if self.inInit then
@@ -731,11 +747,18 @@ local gossip = {
     --- arrive
     if cmd == "a" then
       db("gossip", "<< arrived <<", subcmd)
+      local player, cancel = strsplit(" ", subcmd)
+
+      if cancel == "true" then
+        cancel = true
+      else
+        cancel = false
+      end
 
       if self:isLeader() then
-        self:arrived(subcmd)
+        self:arrived(player, cancel)
       else
-        addonData.summon:arrived(subcmd)
+        addonData.summon:arrived(player, cancel)
       end
 
       --- add player
@@ -761,13 +784,10 @@ local gossip = {
       --- clickers
     elseif cmd == "c" then
       local locks, clickers = strsplit("+", subcmd)
-      db("gossip", "<< clickers <<", locks, clickers)
+      db("gossip", "<< clickers <<", sender, locks, clickers)
 
-      if self:isLeader() then
-        self:clicks(locks, clickers)
-      else
-        self:setClicks(locks, clickers)
-      end
+      self:setClicks(locks, clickers)
+
 
       --- initialize
     elseif cmd == "i" then

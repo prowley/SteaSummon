@@ -442,8 +442,8 @@ local alts = {
       name = L["Enable only when player buffed"],
       desc = L["altbuffeddesc"],
       type = "toggle",
-      width = "full",
-      descStyle = "inline",
+      width = "double",
+      --descStyle = "inline",
       set = function(_, val)
         SteaSummonSave.altbuffed = val
       end,

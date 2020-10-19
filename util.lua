@@ -144,7 +144,6 @@ local util = {
   playerClose = function(self, player)
     local me, _ = UnitName("player")
     player = strsplit("-", player) -- might turn up as player-server
-    --print("player", player)
 
     if me == player or player == "player" then
       return false -- don't trip for yourself, we'll let others tell us you're summoned :)

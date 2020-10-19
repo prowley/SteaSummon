@@ -75,7 +75,7 @@ local chat = {
     if msg then
       if string.sub(msg, 1,1) == "-" and settings:findSummonWord(string.sub(msg, 2)) then
         name, server = strsplit("-", servername)
-        gossip:arrived(name)
+        gossip:arrived(name, true)
       elseif settings:findSummonWord(msg) then
         -- someone wants a summon
         name, server = strsplit("-", servername)
