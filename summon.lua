@@ -32,6 +32,7 @@ local summon = {
   show = nil,
   nextIdx = nil,
   countSummoned = 0,
+  shrunk = false,
 
   ---------------------------------
   init = function(self)
@@ -541,7 +542,6 @@ local summon = {
         db("summon.display",  wpos[1], wpos[2], wpos[3], wpos[4], wpos[5], "width:", wpos["width"], "height:", wpos["height"])
         f:ClearAllPoints()
         f:SetPoint(wpos[1], wpos[2], wpos[3], wpos[4], wpos[5])
-        --f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", wpos["left"], wpos["top"])
         f:SetSize(wpos["width"], wpos["height"])
       end
 
@@ -551,7 +551,7 @@ local summon = {
         edgeSize = 16,
         insets = { left = 8, right = 6, top = 8, bottom = 8 },
       })
-      f:SetBackdropColor(.57, .47, .85, 0.5) -- (147, 112, 219) purple
+      f:SetBackdropColor(.57, .47, .85, 0.5)
       f:SetBackdropBorderColor(.57, .47, .85, 0.5)
 
       --- Movable
@@ -595,10 +595,10 @@ local summon = {
           if SteaSummonToButton then SteaSummonToButton:Show() end
         end
 
-        if SteaSummonContextMenuButton and pos["width"] < 100 or pos["height"] < 28 then
-          SteaSummonContextMenuButton:Hide()
+        if pos["width"] < 100 or pos["height"] < 28 then
+          if SteaSummonContextMenuButton then SteaSummonContextMenuButton:Hide() end
         else
-          SteaSummonContextMenuButton:Show()
+          if SteaSummonContextMenuButton then SteaSummonContextMenuButton:Show() end
         end
 
         if pos["width"] < 140 then
@@ -628,13 +628,23 @@ local summon = {
 
       --- Table of summon info
       addonData.buttons = {}
-      for i=1, 38 do
+      for i=1, 39 do
         self:createButton(i)
       end
 
       --- Setup Next button
       addonData.buttons[38].Button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
       addonData.buttons[38].Button:SetText(L["Next"])
+
+      --- Setup Summon Me button
+      addonData.buttons[39].Button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
+      addonData.buttons[39].Button:SetScript("OnClick", function()
+        if self:findWaitingPlayer(self.me) then
+          self:resetMe()
+        else
+          self:addMe()
+        end
+      end)
 
       --- Resizable
       f:SetResizable(true)
@@ -690,7 +700,6 @@ local summon = {
           bgFile = "Interface\\ICONS\\INV_Misc_Gem_Amethyst_02",
         })
         f.shards:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 45, -24)
-        --shards:SetAlpha(0.5)
         f.shards:SetSize(12,12)
 
         f.shards.count = f.shards:CreateFontString(nil,"ARTWORK", nil, 7)
@@ -704,7 +713,7 @@ local summon = {
 
       --- context menu
       f.context = CreateFrame("Button", "SteaSummonContextMenuButton",
-          SteaSummonFrame, "UIGoldBorderButtonTemplate")
+          SteaSummonFrame, "UIPanelButtonTemplate")
       f.context:SetWidth(10)
       f.context:SetHeight(10)
       f.context:SetText(">")
@@ -735,7 +744,7 @@ local summon = {
 
       f.status = f:CreateFontString(nil,"ARTWORK")
       f.status:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.status:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 42, 10)
+      f.status:SetPoint("TOPRIGHT","SteaSummonFrame", "TOPRIGHT", -10, 10)
       f.status:SetAlpha(.5)
       f.status:SetText("")
 
@@ -764,8 +773,6 @@ local summon = {
 
         addonData.buttons[i].Priority["FS"]:SetText(self.buffLetter[self:recPrio(self.waiting[i])])
 
-        -- TODO: C_IncomingSummon.IncomingSummonStatus change status based on accept/decline
-
         if self:offline(player) or self:dead(player) then
           addonData.buttons[i].Button:SetEnabled(false)
           addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
@@ -778,6 +785,16 @@ local summon = {
           addonData.buttons[i].Status["FS"]:SetTextColor(r,g,b, 1)
 
           self:SetMacro(i, player)
+
+          -- check the status of summons
+          if self:recStatus(self.waiting[i]) == "summoned" then
+            local summonStatus = C_IncomingSummon.IncomingSummonStatus(player)
+            if summonStatus == 2 then
+              self:recStatus(self.waiting[i], "accepted")
+            elseif summonStatus == 3 then
+              self:recStatus(self.waiting[i], "declined")
+            end
+          end
 
           local z,l = self:getCurrentLocation()
 
@@ -886,6 +903,46 @@ local summon = {
       end
     end
 
+    --- summon me button
+    if addonData.util:playerCanSummon() then
+      if addonData.buttons[38].Button:IsVisible() then
+        if not self.shrunk then
+          addonData.buttons[39].Button.shrink:Play()
+        end
+      else
+        if self.shrunk then
+          addonData.buttons[39].Button.shrink:Play(true)
+        end
+      end
+    end
+
+    -- when to hide, when to shrink/grow
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      if self:isAtDestination() then
+        if not self.shrunk then
+          addonData.buttons[39].Button.shrink:Play()
+        else
+          addonData.buttons[39].Button:Hide()
+        end
+      else
+        if self.shrunk then
+          addonData.buttons[39].Button:Show()
+          if not addonData.buttons[38].Button:IsVisible() then
+            addonData.buttons[39].Button.shrink:Play(true)
+          end
+        else
+          if addonData.util:playerCanSummon() and addonData.buttons[38].Button:IsVisible() then
+            addonData.buttons[39].Button.shrink:Play()
+          end
+        end
+      end
+    else
+      self.shrunk = true
+      addonData.buttons[39].Button:Hide()
+    end
+
+    SetPortraitTexture(addonData.buttons[39].Button.icon, "player")
+
     --- show summon window
     local show = false
     if addonData.settings:showWindow() or (addonData.settings:showActive() and self.numwaiting > 0) then
@@ -982,7 +1039,7 @@ local summon = {
     local hpad = 5
 
     local parent = addonData.buttonFrame
-    if i == 38 then
+    if i >= 38 then
       parent = SteaSummonFrame
     end
 
@@ -991,7 +1048,6 @@ local summon = {
     addonData.buttons[i] = {}
     addonData.buttons[i].Button = CreateFrame("Button", "SteaSummonButton"..i, parent, "SecureActionButtonTemplate");
     addonData.buttons[i].Button:SetPoint("TOPLEFT","SteaSummonButtonFrame","TOPLEFT", wpad,-(((i-1)*bh)+hpad))
-    addonData.buttons[i].Button:SetText("Stea")
     addonData.buttons[i].Button:SetNormalFontObject("GameFontNormalSmall")
     tex = addonData.buttons[i].Button:CreateTexture()
     texHighlight = addonData.buttons[i].Button:CreateTexture()
@@ -1012,20 +1068,60 @@ local summon = {
       addonData.buttons[i].Button:ClearAllPoints()
       addonData.buttons[i].Button:SetWidth(bw - 30)
       addonData.buttons[i].Button:SetHeight(bw - 30)
-      tex:SetTexture("Interface/Buttons/UI-QuickSlot2")
-      tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
-      texPushed:SetTexture("Interface/Buttons/UI-QuickSlot")
-      texPushed:SetTexCoord(0, 1, 0, 1)
-      texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
-      texDisabled:SetTexCoord(0, 1, 0, 1)
+      addonData.buttons[i].Button:SetFrameLevel(128)
       -- icon
       icon = addonData.buttons[i].Button:CreateTexture()
-      icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
-      icon:SetTexCoord(0, 1, 0, 1)
-      icon:SetAllPoints()
+      if i == 38 then
+        tex:SetTexture("Interface/Buttons/UI-QuickSlot2")
+        tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+        texPushed:SetTexture("Interface/Buttons/UI-QuickSlot")
+        texPushed:SetTexCoord(0, 1, 0, 1)
+        texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
+        texDisabled:SetTexCoord(0, 1, 0, 1)
+        texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
+        texHighlight:SetTexCoord(0, 1, 0, 1)
+        icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
+        icon:SetTexCoord(0, 1, 0, 1)
+        icon:SetAllPoints()
+      else
+        icon:SetAllPoints()
 
-      texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
-      texHighlight:SetTexCoord(0, 1, 0, 1)
+        -- animation move and shrink
+        local button = addonData.buttons[39].Button
+        button.shrink = button:CreateAnimationGroup()
+        button.shrink:SetScript("OnPlay", function()
+          if addonData.summon.shrunk then
+            button:SetWidth(bw - 30)
+            button:SetHeight(bw - 30)
+            button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
+          end
+        end)
+
+        button.shrink:SetScript("OnFinished", function()
+          if not addonData.summon.shrunk then
+            button:SetWidth((bw - 30)/2)
+            button:SetHeight((bw - 30)/2)
+            button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", 40, 15)
+            addonData.summon.shrunk = true
+          else
+            button:SetWidth(bw - 30)
+            button:SetHeight(bw - 30)
+            button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
+            addonData.summon.shrunk = false
+          end
+        end)
+        button.shrink.anim = button.shrink:CreateAnimation("Scale")
+        button.shrink.anim:SetFromScale(1, 1)
+        button.shrink.anim:SetToScale(0.33, 0.33)
+        button.shrink.anim:SetDuration(0.8)
+        button.shrink.anim:SetSmoothing("IN")
+        button.shrink.anim2 = button.shrink:CreateAnimation("Translation")
+        button.shrink.anim2:SetOffset(40, 15)
+        button.shrink.anim2:SetDuration(0.8)
+        button.shrink.anim2:SetSmoothing("IN")
+        button.icon = icon
+        addonData.buttons[i].Button:SetFrameLevel(129)
+      end
     end
 
     tex:SetAllPoints()
@@ -1470,6 +1566,7 @@ local summon = {
   addMe = function(self)
     self = addonData.summon
     addonData.gossip:add(self.me, true)
+    addonData.chat:raid("%t")
   end,
 
   ---------------------------------

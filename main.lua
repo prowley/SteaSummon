@@ -11,7 +11,7 @@
 -- TODO: buffs displayed in tooltip? over priority reason
 -- TODO: indication when raid lead, click to pass lead
 -- TODO: indication when net lead, also see other addon users
-
+-- TODO: button for requesting summon
 
 -- notes:
 --
