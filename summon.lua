@@ -58,7 +58,7 @@ local summon = {
         -- make sure altwhispered is numeric (was a string)
         if #v > 6 then -- have alts
           if type(self:recAltWhispered(v) == "string") then
-            self:recAltWhispered(v, 0)
+            self:recAltWhispered(v, "x")
           end
         end
       end
@@ -142,7 +142,7 @@ local summon = {
       true, -- dirty flag
       buffs or {},
       alts or {},
-      altwhispered or 0
+      altwhispered or "x"
     }
     db("summon.waitlist.record","Created record {",
         self:recPlayer(rec), self:recTime(rec), self:recStatus(rec), self:recPrio(rec), true,
@@ -201,7 +201,9 @@ local summon = {
   recTimeIncr = function(self, rec)
     self:listDirty(true)
     rec[2] = rec[2] + 1
-    rec[8] = rec[8] + 1
+    if rec[8] and rec[8] ~= "x" then
+      rec[8] = rec[8] + 1
+    end
     db("summon.tick","setting record time value:", rec[2], rec[8]) -- too verbose for summon.waitlist.record
 
     return rec[2]
@@ -328,7 +330,7 @@ local summon = {
     if val ~= nil then
       self:listDirty(true)
       db("summon.waitlist.record","setting record alt whispered:", val)
-      rec[8] = tonumber(val)
+      rec[8] = val
     end
     return rec[8]
   end,
@@ -642,6 +644,14 @@ local summon = {
           self:addMe()
         end
       end)
+      addonData.buttons[39].Button:SetScript("OnEnter", function(this)
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["Request/Reset Summon"])
+        GameTooltip:Show()
+      end)
+      addonData.buttons[39].Button:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+      end)
 
       --- Resizable
       f:SetResizable(true)
@@ -687,11 +697,48 @@ local summon = {
         place:RegisterForClicks()
         place:SetScript("OnMouseUp", summonTo)
         place:SetScript("OnClick", summonTo)
+        place:SetScript("OnEnter", function(this)
+          GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+          GameTooltip:AddLine(L["Toggle Raid Information"])
+          GameTooltip:Show()
+        end)
+        place:SetScript("OnLeave", function()
+          GameTooltip:Hide()
+        end)
         place:Hide()
       end
 
+      --- invisible set/unset destination button button
+      if addonData.util.playerCanSummon() then
+        local function invisDest()
+          if self.zone ~= "" then
+            addonData.gossip:destination("", "")
+          else
+            addonData.gossip:destination(self.myZone, self.myLocation)
+          end
+        end
+
+        local invdest = CreateFrame("Button", "SteaSummonInvisibleSetDestinationButton", SteaSummonFrame, "UIPanelButtonTemplate")
+        invdest:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 75, -8)
+        invdest:SetPoint("RIGHT","SteaSummonFrame", "RIGHT", 24)
+        invdest:SetAlpha(0)
+        invdest:SetFrameLevel(2)
+        invdest:RegisterForClicks()
+        invdest:SetScript("OnMouseUp", invisDest)
+        invdest:SetScript("OnClick", invisDest)
+        invdest:SetScript("OnEnter", function(this)
+          GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+          GameTooltip:AddLine(L["Set/Unset Destination"])
+          GameTooltip:Show()
+        end)
+        invdest:SetScript("OnLeave", function()
+          GameTooltip:Hide()
+        end)
+      end
+
+
+      --- shard count icon
       if self.isWarlock then
-        --- shard count icon
         f.shards = CreateFrame("Frame", "SteaSummonShardIcon", SteaSummonFrame)
         f.shards:SetBackdrop({
           bgFile = "Interface\\ICONS\\INV_Misc_Gem_Amethyst_02",
@@ -716,7 +763,33 @@ local summon = {
       f.context:SetText(">")
       f.context:SetPoint("TOPLEFT","SteaSummonFrame","TOPRIGHT", -17, -7)
       f.context:SetScript("OnMouseUp", function() addonData.appbutton:menu() end)
+      f.context:SetFrameLevel(3)
       f.context:SetAlpha(0.5)
+
+      --- raid lead button
+      local function relinquishLead()
+        addonData.raid:relinquish()
+      end
+
+      local lead = CreateFrame("Button", "SteaSummonRelinquishRaidLeadButton", SteaSummonFrame, "TruncatedButtonTemplate")
+      lead:SetNormalTexture("Interface\\GROUPFRAME\\UI-Group-LeaderIcon")
+      lead:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 60, 4)
+      lead:SetSize(16,16)
+      lead:RegisterForClicks()
+      lead:SetScript("OnMouseUp", relinquishLead)
+      lead:SetScript("OnClick", relinquishLead)
+      lead:SetFrameLevel(102)
+      lead:SetScript("OnEnter", function(this)
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["Relinquish Raid Lead"])
+        GameTooltip:Show()
+      end)
+      lead:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+      end)
+      if not UnitIsGroupLeader("player") then
+        lead:Hide()
+      end
 
       --- Text items
 
@@ -770,9 +843,34 @@ local summon = {
 
         addonData.buttons[i].Priority["FS"]:SetText(self.buffLetter[self:recPrio(self.waiting[i])])
 
+        -- alts tooltip
+        if #self:recAlts(self.waiting[i]) > 0 then
+          addonData.buttons[i].Status:SetScript("OnEnter", function(this)
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L["Alt Support"])
+            for _,v in pairs(self:recAlts(self.waiting[i])) do
+              GameTooltip:AddLine(v)
+            end
+            GameTooltip:Show()
+          end)
+          addonData.buttons[i].Status:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+          end)
+        else
+          addonData.buttons[i].Status:SetScript("OnEnter", nil)
+          addonData.buttons[i].Status:SetScript("OnLeave", nil)
+        end
+
         if self:offline(player) or self:dead(player) then
           addonData.buttons[i].Button:SetEnabled(false)
-          addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
+          if self:offline(player) and #self:recAlts(self.waiting[i]) > 0 then
+            addonData.buttons[i].Status["FS"]:SetTextColor(0,0.5,0, 1)
+          else
+            addonData.buttons[i].Status["FS"]:SetTextColor(0.5,0.5,0.5, 1)
+          end
+          if self:recAltWhispered(self.waiting[i]) ~= "x" then
+            addonData.buttons[i].Status["FS"]:SetTextColor(0.5,1,0.5, 1)
+          end
           addonData.buttons[i].Button:SetAttribute("macrotext", "")
           addonData.buttons[i].Button:SetScript("OnMouseUp", nil)
         elseif self:listDirty() then
@@ -1075,7 +1173,7 @@ local summon = {
       addonData.buttons[i].Button:ClearAllPoints()
       addonData.buttons[i].Button:SetWidth(bw - 30)
       addonData.buttons[i].Button:SetHeight(bw - 30)
-      addonData.buttons[i].Button:SetFrameLevel(128)
+      addonData.buttons[i].Button:SetFrameLevel(100)
       -- icon
       icon = addonData.buttons[i].Button:CreateTexture()
       if i == 38 then
@@ -1127,7 +1225,7 @@ local summon = {
         button.shrink.anim2:SetDuration(0.8)
         button.shrink.anim2:SetSmoothing("IN")
         button.icon = icon
-        addonData.buttons[i].Button:SetFrameLevel(129)
+        addonData.buttons[i].Button:SetFrameLevel(101)
       end
     end
 
@@ -1580,6 +1678,7 @@ local summon = {
   resetMe = function(self)
     self = addonData.summon
     addonData.gossip:status(self.me, "requested")
+    addonData.chat:raid("%t")
   end,
 
   ---------------------------------

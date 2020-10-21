@@ -20,7 +20,7 @@ local alt = {
     chat = addonData.chat
     gossip = addonData.gossip
     monitor = addonData.monitor
-    monitor:create(60, self.listWhisper)
+    monitor:create(15, self.listWhisper)
   end,
 
   newPlayer = function(self, player)
@@ -42,7 +42,7 @@ local alt = {
     local boosted = 0
 
     -- don't whisper if we can't summon
-    if not summon:summonsReady() or summon.numwaiting == 0 then
+    if summon.numwaiting == 0 or not summon:summonsReady() then
       return
     end
 
@@ -60,11 +60,11 @@ local alt = {
       db("alt", "player", player)
 
       if summon:recStatus(rec) == "offline" and #summon:recAlts(rec) > 0
-          and (summon:recAltWhispered(rec) == 0 or summon:recAltWhispered(rec) > 60) then
+          and (summon:recAltWhispered(rec) == "x" or summon:recAltWhispered(rec) > 59) then
         db("alt", "offline with alts")
         for _,alt in pairs(summon:recAlts(rec)) do
           db("alt", "whispering", alt)
-          chat:whisper(SteaSummonSave.altGetOnlineWhisper, alt)
+          gossip:chatThis("raisealt", alt)
         end
         summon:recAltWhispered(rec, 0)
         gossip:altWhispered(summon:recPlayer(rec), 0)
@@ -137,7 +137,7 @@ local alt = {
 
     if SteaSummonSave.initialQspot <= idx then
       -- we need to talk
-      chat:whisper(SteaSummonSave.altWhisper, player)
+      gossip:chatThis("alt", player)
     end
   end,
 }

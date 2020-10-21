@@ -241,3 +241,4 @@ L["Relinquish Raid Lead"] = true
 L["Clear Summon List"] = true
 L["clearlistdesc"] = "Performing this action will clear the list for everyone else in the raid. You could just hide the window. Are you sure you want to continue?"
 L["Manage List"] = true
+L["Request/Reset Summon"] = true

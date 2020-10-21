@@ -47,4 +47,5 @@ function tstring(str, patterns)
     return str
 end
 
+addonData.main = SteaSummon
 addonData.start()
