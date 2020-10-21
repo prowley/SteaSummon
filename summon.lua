@@ -72,9 +72,7 @@ local summon = {
 
   ---------------------------------
   postInitSetup = function(self)
-    if not self then
-      self = addonData.summon
-    end
+    self = addonData.summon
 
     if not self.postInit then
       return
