@@ -988,9 +988,7 @@ local summon = {
 
   ---------------------------------
   showSummonsToggle = function(self)
-    if not self then
-      self = addonData.summon
-    end
+    self = addonData.summon
     if SteaSummonFrame:IsVisible() then
       if self.show == nil then
         self.show = false
