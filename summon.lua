@@ -527,7 +527,7 @@ local summon = {
     end
 
     self = addonData.summon -- often we are not ourselves, be positive
-    
+
     if not SteaSummonFrame then
       local f = CreateFrame("Frame", "SteaSummonFrame", UIParent, "AnimatedShineTemplate")
       f:SetPoint("CENTER")
@@ -786,14 +786,14 @@ local summon = {
           -- check the status of summons - apparently this api doesn't exist in Classic really but is doc'd
           -- and used in the classic UI code download...
           -- I may have misread the error during raid, just adding extra caution detects
-          if player and C_IncomingSummon and C_IncomingSummon.HasIncomingSummon then
+          if player and C_IncomingSummon and C_IncomingSummon.HasIncomingSummon then -- paranoia
             if C_IncomingSummon.HasIncomingSummon(player) then
               local status = self:recStatus(self.waiting[i])
               if status ~= "summoned" and status ~= "accepted" and status ~= "declined" then
                 self:recStatus(self.waiting[i], "summoned")
               end
               if status ~= "accepted" and status ~= "declined" then
-                if C_IncomingSummon.IncomingSummonStatus then
+                if C_IncomingSummon.IncomingSummonStatus then -- paranoia
                   local summonStatus = C_IncomingSummon.IncomingSummonStatus(player)
                   if summonStatus == 2 then
                     self:recStatus(self.waiting[i], "accepted")
