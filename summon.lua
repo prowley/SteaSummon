@@ -526,6 +526,8 @@ local summon = {
       return
     end
 
+    self = addonData.summon -- often we are not ourselves, be positive
+    
     if not SteaSummonFrame then
       local f = CreateFrame("Frame", "SteaSummonFrame", UIParent, "AnimatedShineTemplate")
       f:SetPoint("CENTER")
