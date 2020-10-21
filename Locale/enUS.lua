@@ -55,6 +55,10 @@ L["Location: %subzone, %zone"] = true
 L["Destination: %subzone, %zone"] = true
 L["Next"] = true
 L["Alt:"] = true
+L["Request"] = true
+L["Reset"] = true
+L["accepted"] = true
+L["declined"] = true
 
 --- optionsgui.lua
 L["One button summoning, shared summoning list...    (Options for: %name)"] = true

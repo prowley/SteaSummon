@@ -23,8 +23,10 @@ function appbutton:menu()
     table.insert(menu, { text = L["Cancel Summon"], notCheckable = true,
                          icon = "Interface\\RAIDFRAME\\ReadyCheck-NotReady", func = addonData.summon.cancelMe })
   else
-    table.insert(menu, { text = L["Request Summon"], notCheckable = true,
-                         icon = "Interface\\RAIDFRAME\\ReadyCheck-Ready", func = addonData.summon.addMe })
+    if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+      table.insert(menu, { text = L["Request Summon"], notCheckable = true,
+                           icon = "Interface\\RAIDFRAME\\ReadyCheck-Ready", func = addonData.summon.addMe })
+    end
   end
   if addonData.util.playerCanSummon() then
     local submenu = { text = L["Manage List"], notCheckable = true, hasArrow = true, menuList = {}}
