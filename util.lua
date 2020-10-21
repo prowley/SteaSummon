@@ -175,8 +175,10 @@ local util = {
     local out
     local y1, x1, _, instance1 = UnitPosition(unit1)
     local y2, x2, _, instance2 = UnitPosition(unit2)
-    if instance1 == instance2 then
-      out = ((x2 - x1) ^ 2 + (y2 - y1) ^ 2) ^ 0.5
+    if y1 and x1 and x2 and y2 then
+      if instance1 == instance2 then
+        out = ((x2 - x1) ^ 2 + (y2 - y1) ^ 2) ^ 0.5
+      end
     end
     return out
   end,

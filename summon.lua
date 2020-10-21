@@ -510,9 +510,6 @@ local summon = {
       end
     end
 
-    --- maintain gossip list
-    addonData.gossip:offlineCheck() -- TODO: probably unnecessary
-
     --- update display
     self:showSummons()
 
@@ -784,13 +781,25 @@ local summon = {
 
           self:SetMacro(i, player)
 
-          -- check the status of summons
-          if self:recStatus(self.waiting[i]) == "summoned" then
-            local summonStatus = C_IncomingSummon.IncomingSummonStatus(player)
-            if summonStatus == 2 then
-              self:recStatus(self.waiting[i], "accepted")
-            elseif summonStatus == 3 then
-              self:recStatus(self.waiting[i], "declined")
+          -- check the status of summons - apparently this api doesn't exist in Classic really but is doc'd
+          -- and used in the classic UI code download...
+          -- I may have misread the error during raid, just adding extra caution detects
+          if player and C_IncomingSummon and C_IncomingSummon.HasIncomingSummon then
+            if C_IncomingSummon.HasIncomingSummon(player) then
+              local status = self:recStatus(self.waiting[i])
+              if status ~= "summoned" and status ~= "accepted" and status ~= "declined" then
+                self:recStatus(self.waiting[i], "summoned")
+              end
+              if status ~= "accepted" and status ~= "declined" then
+                if C_IncomingSummon.IncomingSummonStatus then
+                  local summonStatus = C_IncomingSummon.IncomingSummonStatus(player)
+                  if summonStatus == 2 then
+                    self:recStatus(self.waiting[i], "accepted")
+                  elseif summonStatus == 3 then
+                    self:recStatus(self.waiting[i], "declined")
+                  end
+                end
+              end
             end
           end
 
