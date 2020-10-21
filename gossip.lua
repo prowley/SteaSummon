@@ -25,6 +25,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 -- alt alt list for player
 -- wsp player alt whispered
 -- n nags
+-- ct
 
 local DEFAULT_NETLIST_TIME = 15
 
@@ -194,15 +195,7 @@ local gossip = {
     if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
       self:summonQuorum() and addonData.summon.zone ~= ""
     then
-      local msg = SteaSummonSave.raidinfo
-      local z, l = addonData.summon:getDestination()
-      db("gossip", "raid info")
-      local patterns = {
-        ["%%l"] = l,
-        ["%%z"] = z
-      }
-      msg = tstring(msg, patterns)
-      addonData.chat:raid(msg, self.me)
+      self:chatThis("raidinfo")
     end
 
     if SteaSummonSave.raidinfotimer then
@@ -218,15 +211,7 @@ local gossip = {
         not self:summonQuorum() and addonData.summon.zone ~= ""
     then
       db("gossip", "clicker nag")
-      local msg = SteaSummonSave.clickersnag
-      local z, l = addonData.summon:getDestination()
-      db("gossip", "raid info")
-      local patterns = {
-        ["%%l"] = l,
-        ["%%z"] = z
-      }
-      msg = tstring(msg, patterns)
-      addonData.chat:raid(msg, self.me)
+      self:chatThis("moreclicks")
     end
 
     if SteaSummonSave.clickersnagtimer then
@@ -246,6 +231,15 @@ local gossip = {
 
     for _, v in pairs(killList) do
       table.remove(self.netList, v)
+      local at = self.atDest[v]
+      self.atDest[v] = nil
+      if at then
+        self:updateCounts(false, v)
+      end
+      if self.locksCount == 0 and self.adjLocks == 0 then
+        addonData.summon:setDestination("","")
+        self:clicks(0,0)
+      end
     end
   end,
 
@@ -338,9 +332,66 @@ local gossip = {
   end,
 
   ---------------------------------
-  status = function(self, player, status)
-    self:offlineCheck()
+  chatThis = function(self, msgtype, target, youDoIt)
+    -- unlike other messages that either go to raid when leader or whisper to leader
+    -- this one goes from leader to someone else, unless someone else can't be found
+    if youDoIt or addonData.util:playerCanSummon() then
+      if msgtype == "alt" then
+        addonData.chat:whisper(SteaSummonSave.altWhisper, target)
+      elseif msgtype == "raisealt" then
+        addonData.chat:whisper(SteaSummonSave.altGetOnlineWhisper, target)
+      else
+        db("gossip", "raid chat this", msgtype, target)
+        local msg = ""
+        if msgtype == "moreclicks" then
+          msg = SteaSummonSave.clickersnag
+          db("gossip", "clicker nag")
+        elseif msgtype == "raidinfo" then
+          msg = SteaSummonSave.raidinfo
+          db("gossip", "raid info")
+        else
+          return -- no msgtype, no message
+        end
 
+        local z, l = addonData.summon:getDestination()
+        local patterns = {
+          ["%%l"] = l,
+          ["%%z"] = z
+        }
+
+        if z and z ~= "" and l and l ~= "" then
+          msg = tstring(msg, patterns)
+          addonData.chat:raid(msg, self.me)
+        end
+      end
+    else
+      -- find someone more appropriate, like a warlock with the addon, task authority matters
+      local theOne
+      if self.destLocks[1] ~= nil then
+        theOne = self.destLocks[1]
+      else
+        for _,v in pairs(self.netList) do
+          if addonData.util:playerCanSummon(v) then
+            theOne = v
+            break
+          end
+        end
+      end
+
+      if not theOne then
+        self:chatThis(msgtype, target, true) -- Neo's not here, so it's up to you
+      else
+        db("gossip", ">> chat this >> WHISPER", theOne, msgtype, target)
+        if not target then
+          target = ""
+        end
+        self:SendCommMessage(self.channel, "ct " ..  " " .. msgtype .. " " .. target, "WHISPER", theOne)
+      end
+    end
+  end,
+
+  ---------------------------------
+  status = function(self, player, status)
     if self:isLeader() then
       local idx = addonData.summon:findWaitingPlayerIdx(player)
       if idx then
@@ -371,8 +422,6 @@ local gossip = {
 
   ---------------------------------
   arrived = function(self, player, cancel)
-    self:offlineCheck()
-
     local cancelText = "true"
 
     if cancel == nil then
@@ -404,8 +453,6 @@ local gossip = {
 
   ---------------------------------
   add = function(self, player, isWhisper)
-    self:offlineCheck()
-
     if self:isLeader() then
       local index = addonData.summon:findWaitingPlayerIdx(player)
       if not index then
@@ -436,7 +483,6 @@ local gossip = {
 
   ---------------------------------
   alts = function(self, player, playeralts)
-    self:offlineCheck()
     local alts
 
     if self:isLeader() then
@@ -479,8 +525,6 @@ local gossip = {
 
   ---------------------------------
   destination = function(self, zone, location, noSet, player)
-    self:offlineCheck()
-
     local destination = string.gsub(zone .. "+" .. location, " ", "_")
 
     if not player and self:isLeader() then
@@ -788,6 +832,16 @@ local gossip = {
 
       self:setClicks(locks, clickers)
 
+      --- chat this
+    elseif cmd == "ct" then
+      if sender == self.netList[1] then -- at least protect from people other than net lead abusing this
+        local msgtype, to = strsplit(" ", subcmd)
+        if not msgtype or msgtype == "" then
+          msgtype = to
+        end
+        db("gossip", "<< chat this <<", sender, msgtype, to)
+        self:chatThis(msgtype, to)
+      end
 
       --- initialize
     elseif cmd == "i" then

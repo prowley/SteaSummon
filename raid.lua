@@ -33,10 +33,24 @@ local raid = {
     if (event == "PARTY_LEADER_CHANGED") then
       if IsInGroup(LE_PARTY_CATEGORY_HOME) then
         self:updateRaid()
-        if SteaSummonSave.convertToRaid and UnitIsGroupLeader("player") and not IsInRaid() then
-          ConvertToRaid()
+        if UnitIsGroupLeader("player") then
+          if SteaSummonSave.convertToRaid and not IsInRaid() then
+            ConvertToRaid()
+          end
+          if SteaSummonRelinquishRaidLeadButton then
+            SteaSummonRelinquishRaidLeadButton:Show()
+          end
+        else
+          if SteaSummonRelinquishRaidLeadButton then
+            SteaSummonRelinquishRaidLeadButton:Hide()
+          end
         end
+
         self:assign()
+      else
+        if SteaSummonRelinquishRaidLeadButton then
+          SteaSummonRelinquishRaidLeadButton:Hide()
+        end
       end
     end
   end,
@@ -120,7 +134,7 @@ local raid = {
     end
   end,
 
-  inGuild = function(self, player)
+  inGuild = function(_, player)
     local _, server = UnitFullName("player")
     local gNum = GetNumGuildMembers()
     for i=1, gNum do
@@ -208,7 +222,8 @@ local raid = {
     StaticPopup_Hide("PARTY_INVITE")
   end,
 
-  assign = function(self, player)
+  assign = function(self)
+    self = addonData.raid
     if UnitIsGroupLeader("player") then
       local leader
       local gNum = GetNumGroupMembers()
