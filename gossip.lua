@@ -3,6 +3,7 @@
 
 local addonName, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
+local cprint, tstring
 
 -- protocol
 -----------
@@ -60,6 +61,8 @@ local gossip = {
 
   ---------------------------------
   init = function(self)
+    cprint = addonData.main.cprint
+    tstring = addonData.main.tstring
     addonData.debug:registerCategory("gossip.event")
     -- register addon comms channel
     self:RegisterComm(self.channel, "callback")
@@ -127,6 +130,16 @@ local gossip = {
       self:initialize()
     else
       self:replayMessageLog(self.replayLog)
+      -- kick people from the list who left the raid in our absence
+      local kick = {}
+      for _,v in pairs(addonData.summon.waiting) do
+        if not UnitClass(addonData.summon:recPlayer(v)) then -- tests all group types
+          table.insert(kick, addonData.summon:recPlayer(v))
+        end
+      end
+      for _,v in pairs(kick) do
+        self:arrived(v)
+      end
     end
   end,
 

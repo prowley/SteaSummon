@@ -7,10 +7,13 @@ local debug = addonData.debug
 local settings = addonData.settings
 local summon = addonData.summon
 local raid = addonData.raid
+local cprint, tstring
 
 local chat = {
   init = function(_)
     debug:registerCategory("chat")
+    cprint = addonData.main.cprint
+    tstring = addonData.main.tstring
   end,
 
   callback = function (_, event, msg, servername, ...)

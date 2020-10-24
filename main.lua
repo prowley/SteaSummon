@@ -7,11 +7,8 @@
 
 --- Visual
 -- TODO: add fancy spell casting next button
--- TODO: alts on tooltip for offline
 -- TODO: buffs displayed in tooltip? over priority reason
--- TODO: indication when raid lead, click to pass lead
 -- TODO: indication when net lead, also see other addon users
--- TODO: button for requesting summon
 
 -- notes:
 --
@@ -35,11 +32,11 @@ _G["BINDING_NAME_CLICK SteaSummonToButton:LeftButton"] = L["Set Destination"]
 local SteaSummon = {}
 
 -- colored print to chat window
-function cprint(...)
+function SteaSummon.cprint(...)
     print("|cf00fffff" .. addonName .. ":|r ", ...)
 end
 
-function tstring(str, patterns)
+function SteaSummon.tstring(str, patterns)
     for key, val in pairs(patterns) do
         str = string.gsub(str, key, val)
     end

@@ -1,5 +1,6 @@
 local _, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
+local tstring
 
 local optionsgui = {
   showID = nil,
@@ -791,7 +792,7 @@ local raid = {
       order = 17,
       name = L["Auto invite players who whisper these trigger words"],
       desc = L["These trigger words will trigger an invitation to the raid"],
-      width = "full",
+      width = "double",
       type = "input",
       set = function(_, val)
         SteaSummonSave.autoInviteTriggers = addonData.util:multiLineToTable(val)
@@ -835,6 +836,7 @@ function optionsgui:show()
 end
 
 function optionsgui:init()
+  tstring = addonData.main.tstring
   local me = UnitName("player")
   local name = "SteaSummon (" .. me .. ")"
   optionsgui.showID = name

@@ -1,6 +1,7 @@
 local _, addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 local g_self -- for callbacks
+local tstring
 
 local summon = {
   waiting = {}, -- the summon list
@@ -36,6 +37,7 @@ local summon = {
 
   ---------------------------------
   init = function(self)
+    tstring = addonData.main.tstring
     g_self = self
     addonData.debug:registerCategory("summon.display")
     addonData.debug:registerCategory("summon.waitlist.record")

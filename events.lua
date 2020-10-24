@@ -64,7 +64,7 @@ local function loaded(_, event, ...)
     addonData.debug:chatCat("util")
     addonData.debug:chatCatSwitch(true) -- strictly this is unnecessary, but I want to see the output
 
-    cprint("loaded version", GetAddOnMetadata(addonName, "Version"))
+    addonData.main.cprint("loaded version", GetAddOnMetadata(addonName, "Version"))
   end
 end
 
