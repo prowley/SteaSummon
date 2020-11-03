@@ -1651,6 +1651,7 @@ local summon = {
     db("summon.misc", "setting destination: ", location, " in ", zone)
     if location and location ~= "" and zone and zone ~= "" then
       self.countSummoned = 0
+      self.summoningPlayer = false
       if SteaSummonFrame then
         local pat = {["%%zone"] = self.zone, ["%%subzone"] = self.location}
         local s = L["Destination: %subzone, %zone"]

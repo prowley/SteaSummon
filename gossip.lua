@@ -205,6 +205,8 @@ local gossip = {
   raidInfo = function(self)
     self = addonData.gossip
 
+    if self.locksCount < 1 then return end -- make sure an addon lock is at dest, too many corner cases
+
     if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
       self:summonQuorum() and addonData.summon.zone ~= ""
     then
@@ -219,6 +221,8 @@ local gossip = {
   ---------------------------------
   clickerNag = function(self)
     self = addonData.gossip
+
+    if self.locksCount < 1 then return end -- make sure an addon lock is at dest, too many corner cases
 
     if addonData.summon.infoSend and not self.inInit and IsInGroup(LE_PARTY_CATEGORY_HOME) and self:isLeader() and
         not self:summonQuorum() and addonData.summon.zone ~= ""
@@ -859,8 +863,27 @@ local gossip = {
       --- initialize
     elseif cmd == "i" then
       -- initialize requestor, if deputy init leader when they /reload
+      local serviced = false
+
       if self:isLeader() or (self.netList[1] == sender and self.netList[2] == self.me) then
+        -- when a lot of raiders are logging in and out it puts a strain on the
+        -- leader if they are the only one responding to this, and that may trigger throttling
+        -- lower down the stack to avoid blizz cutting us off. So here we dish out the task
+        -- to someone randomly chosen (and hope they don't go offline right now, or sucks to be sender
+        -- and they'll just have to be eventually consistent :P)
+        if #self.netList > 2 then -- make sure we have someone else to gamble with, who isn't the newbie
+          local winner = random(1, #self.netList - 1) -- seeding really doesn't matter
+          if winner ~= 1 then
+            serviced = true
+            self:SendCommMessage(self.channel, "i " .. sender, "WHISPER", self.netList[winner])
+          end
+        end
+      end
+
+      if not serviced then
         db("gossip", "<< initialize request <<")
+        if subcmd and subcmd ~= "" then sender = subcmd end
+
         if addonData.summon.numwaiting then
           local data = addonData.util:marshalWaitingTable()
           local dl = addonData.util:tableToMultiLine(self.atDest, "\n")
