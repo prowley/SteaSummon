@@ -2,9 +2,9 @@
 ## Title: SteaSummon
 ## Notes: One button summoning, shared summoning list...
 ## Author: Stea
-## Version: 0.64
+## Version: 0.65
 ## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG, SteaSummonSaveLDB
-## x-SteaSummon-Protocol-version: 0.64
+## x-SteaSummon-Protocol-version: 0.65
 
 Libs\embeds.xml
 Locale\Locales.xml
