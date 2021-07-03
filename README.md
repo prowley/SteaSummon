@@ -2,6 +2,10 @@
 
 WoW Classic addon for warlock raid summoning
 
+## Please Fork this -- need maintainer
+This is usful in classic era, but I don't play classic era.
+
+
 ## New
 
 Manage your raid while summoning, relinquish raid lead when done summoning and leave the raid with raid roles in preferred state
