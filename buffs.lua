@@ -4,6 +4,7 @@ City = {
   16609, --"WarChief's Blessing",
   22888, --"Rallying Cry of the Dragonslayer",
   24425, --"Spirit of Zandalar",
+  430947, --"Boon of BlackFathom",
 }
 
 DarkMoon = {
