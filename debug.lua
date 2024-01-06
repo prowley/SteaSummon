@@ -44,7 +44,7 @@ local debug = {
       end
     end
 
-    local f = CreateFrame("Frame", "DBFrame", UIParent, "AnimatedShineTemplate")
+    local f = CreateFrame("Frame", "DBFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate, AnimatedShineTemplate")
     f:SetPoint("CENTER")
     f:SetSize(300, 250)
 
@@ -77,7 +77,7 @@ local debug = {
 
     --- Resizable
     f:SetResizable(true)
-    f:SetMinResize(150, 100)
+    f:SetResizeBounds(150, 100)
     f:Hide()
   end,
 

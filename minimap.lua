@@ -10,7 +10,12 @@ function appbutton:toggleMenu()
   self:toggle()
 end
 
-function appbutton:menu()
+function appbutton:menu(button)
+    if button == "LeftButton" then
+        addonData.summon.showSummonsToggle()
+        return
+    end
+        
   local me = UnitName("player")
 
   local menu = {

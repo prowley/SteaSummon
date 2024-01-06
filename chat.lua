@@ -21,6 +21,9 @@ local chat = {
     if event == "CHAT_MSG_SAY" and player ~= me then
       return
     end
+    if servername ~= GetRealmName() then
+        player = servername
+    end
 
     db("chat", "testing chat for keywords")
 

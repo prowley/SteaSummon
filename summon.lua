@@ -1,4 +1,4 @@
-local _, addonData = ...
+_,addonData = ...
 local L = LibStub("AceLocale-3.0"):GetLocale("SteaSummon")
 local g_self -- for callbacks
 
@@ -34,6 +34,39 @@ local summon = {
   countSummoned = 0,
   shrunk = false,
 
+  reConfigureFrames = function(self)
+    if SteaSummonFrame and not SteaSummonFrame.location then
+      SteaSummonFrame.location = SteaSummonFrame:CreateFontString(nil,"ARTWORK")
+      SteaSummonFrame.location:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
+      SteaSummonFrame.location:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 70, -8)
+      SteaSummonFrame.location:SetPoint("RIGHT", -20, 0)
+      SteaSummonFrame.location:SetJustifyH("RIGHT")
+      SteaSummonFrame.location:SetJustifyV("TOP")
+      SteaSummonFrame.location:SetAlpha(.5)
+      SteaSummonFrame.location:SetText("")
+    end
+  
+    if SteaSummonFrame and not SteaSummonFrame.destination then
+      SteaSummonFrame.destination = SteaSummonFrame:CreateFontString(nil,"ARTWORK")
+      SteaSummonFrame.destination:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
+      SteaSummonFrame.destination:SetPoint("TOP", SteaSummonFrame.location, "BOTTOM", 0, 0)
+      SteaSummonFrame.destination:SetPoint("LEFT", SteaSummonFrame.location)
+      SteaSummonFrame.destination:SetJustifyH("RIGHT")
+      SteaSummonFrame.destination:SetJustifyV("TOP")
+      SteaSummonFrame.destination:SetAlpha(.5)
+      SteaSummonFrame.destination:SetText("")
+    end
+  
+    if SteaSummonFrame and not SteaSummonFrame.status then
+      SteaSummonFrame.status = SteaSummonFrame:CreateFontString(nil,"ARTWORK")
+      SteaSummonFrame.status:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
+      SteaSummonFrame.status:SetPoint("TOPRIGHT","SteaSummonFrame", "TOPRIGHT", -10, 10)
+      SteaSummonFrame.status:SetAlpha(.5)
+      SteaSummonFrame.status:SetText("")
+    end
+    
+  end,
+  
   ---------------------------------
   init = function(self)
     g_self = self
@@ -101,6 +134,11 @@ local summon = {
     self.localLocks = tonumber(locks)
     self.localClickers = tonumber(clicks)
     if SteaSummonFrame then
+
+      if not SteaSummonFrame.status then
+        self:reConfigureFrames()
+      end
+
       if IsInGroup(LE_PARTY_CATEGORY_HOME) and self.location ~= "" and self.zone ~= nil then
         if self.localLocks and self.localLocks + self.localClickers > 2 then
           SteaSummonFrame.status:SetTextColor(0,1,0,.5)
@@ -377,7 +415,11 @@ local summon = {
 
   ---------------------------------
   addWaiting = function(self, player, fromPlayer)
-    player = strsplit("-", player)
+    local name, realm = strsplit("-", player)
+    if realm == GetRealmName() then
+        player = name
+    end
+    
     if not IsInGroup(player) then
       return nil
     end
@@ -531,7 +573,8 @@ local summon = {
     self = addonData.summon -- often we are not ourselves, be positive
 
     if not SteaSummonFrame then
-      local f = CreateFrame("Frame", "SteaSummonFrame", UIParent, "AnimatedShineTemplate")
+
+      local f = CreateFrame("Frame", "SteaSummonFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate, AnimatedShineTemplate")
       f:SetPoint("CENTER")
       f:SetSize(300, 250)
       f:SetScale(SteaSummonSave.windowSize)
@@ -631,6 +674,7 @@ local summon = {
         self:createButton(i)
       end
 
+      print("Creating Buttons and setting Text")
       --- Setup Next button
       addonData.buttons[38].Button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
       addonData.buttons[38].Button:SetText(L["Next"])
@@ -655,7 +699,7 @@ local summon = {
 
       --- Resizable
       f:SetResizable(true)
-      f:SetMinResize(80, 25)
+      f:SetResizeBounds(80, 25)
       f:SetClampedToScreen(true)
 
       local rb = CreateFrame("Button", "SteaSummonResizeButton", SteaSummonFrame)
@@ -739,7 +783,7 @@ local summon = {
 
       --- shard count icon
       if self.isWarlock then
-        f.shards = CreateFrame("Frame", "SteaSummonShardIcon", SteaSummonFrame)
+        f.shards = CreateFrame("Frame", "SteaSummonShardIcon", SteaSummonFrame, BackdropTemplateMixin and "BackdropTemplate")
         f.shards:SetBackdrop({
           bgFile = "Interface\\ICONS\\INV_Misc_Gem_Amethyst_02",
         })
@@ -792,31 +836,7 @@ local summon = {
       end
 
       --- Text items
-
-      f.location = f:CreateFontString(nil,"ARTWORK")
-      f.location:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.location:SetPoint("TOPLEFT","SteaSummonFrame", "TOPLEFT", 70, -8)
-      f.location:SetPoint("RIGHT", -20, 0)
-      f.location:SetJustifyH("RIGHT")
-      f.location:SetJustifyV("TOP")
-      f.location:SetAlpha(.5)
-      f.location:SetText("")
-
-      f.destination = f:CreateFontString(nil,"ARTWORK")
-      f.destination:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.destination:SetPoint("TOP", f.location, "BOTTOM", 0, 0)
-      f.destination:SetPoint("LEFT", f.location)
-      f.destination:SetPoint("RIGHT", -20, 0)
-      f.destination:SetJustifyH("RIGHT")
-      f.destination:SetJustifyV("TOP")
-      f.destination:SetAlpha(.5)
-      f.destination:SetText("")
-
-      f.status = f:CreateFontString(nil,"ARTWORK")
-      f.status:SetFont("Fonts\\ARIALN.ttf", 8, "OUTLINE")
-      f.status:SetPoint("TOPRIGHT","SteaSummonFrame", "TOPRIGHT", -10, 10)
-      f.status:SetAlpha(.5)
-      f.status:SetText("")
+      self:reConfigureFrames()
 
       movefunc()
 
@@ -830,6 +850,7 @@ local summon = {
     local next = false
     self.nextIdx = nil
     local listActive = false
+
     for i=1, 37 do
       local player
       local summonClick
@@ -839,7 +860,7 @@ local summon = {
       if self.waiting[i] ~= nil then
         player = self:recPlayer(self.waiting[i])
         self:enableButton(i, true, player)
-        addonData.buttons[i].Button:SetText(player)
+        addonData.buttons[i].Button:SetText(strsplit("-", player))
 
         addonData.buttons[i].Priority["FS"]:SetText(self.buffLetter[self:recPrio(self.waiting[i])])
 
@@ -963,6 +984,7 @@ local summon = {
           elseif next and self.isCasting then
             addonData.buttons[38].Button:Show()
             local nextplayer = self:recPlayer(self.waiting[self.nextIdx])
+            print(nextplayer)
             self:SetMacro(38, nextplayer)
           end
 
@@ -1123,8 +1145,9 @@ local summon = {
         if UnitPower("player") >= 300 then
           --self.isCasting = true
           local spell = GetSpellInfo(698) -- Ritual of Summoning
+          name, server = strsplit("-", player)
           addonData.buttons[index].Button:SetAttribute("macrotext", "/stopmacro [channeling:"
-              .. spell .. "]\n/target " .. player .. "\n/cast " .. spell .. "\n/cqs")
+              .. spell .. "]\n/target " .. name .. "\n/cast " .. spell .. "\n/cqs")
         else
           local spell = GetSpellInfo(1454) -- Life tap rank 1, but we don't use rank
           addonData.buttons[index].Button:SetAttribute("macrotext", "/cast " .. spell)
@@ -1148,48 +1171,48 @@ local summon = {
       parent = SteaSummonFrame
     end
 
-    local tex, texDisabled,texHighlight, texPushed, icon
-
     addonData.buttons[i] = {}
     addonData.buttons[i].Button = CreateFrame("Button", "SteaSummonButton"..i, parent, "SecureActionButtonTemplate");
     addonData.buttons[i].Button:SetPoint("TOPLEFT","SteaSummonButtonFrame","TOPLEFT", wpad,-(((i-1)*bh)+hpad))
     addonData.buttons[i].Button:SetNormalFontObject("GameFontNormalSmall")
-    tex = addonData.buttons[i].Button:CreateTexture()
-    texHighlight = addonData.buttons[i].Button:CreateTexture()
-    texPushed = addonData.buttons[i].Button:CreateTexture()
-    texDisabled = addonData.buttons[i].Button:CreateTexture()
+    addonData.buttons[i].Button.tex = addonData.buttons[i].Button:CreateTexture();
+    addonData.buttons[i].Button.texHighlight = addonData.buttons[i].Button:CreateTexture()
+    addonData.buttons[i].Button.texPushed = addonData.buttons[i].Button:CreateTexture()
+    addonData.buttons[i].Button.texDisabled = addonData.buttons[i].Button:CreateTexture()
+
     if i < 38 then
       addonData.buttons[i].Button:SetWidth(bw)
       addonData.buttons[i].Button:SetHeight(bh)
-      tex:SetTexture("Interface/Buttons/UI-Panel-Button-Up")
-      tex:SetTexCoord(0, 0.625, 0, 0.6875)
-      texHighlight:SetTexture("Interface/Buttons/UI-Panel-Button-Highlight")
-      texHighlight:SetTexCoord(0, 0.625, 0, 0.6875)
-      texPushed:SetTexture("Interface/Buttons/UI-Panel-Button-Down")
-      texPushed:SetTexCoord(0, 0.625, 0, 0.6875)
-      texDisabled:SetTexture("Interface/Buttons/UI-Panel-Button-Disabled")
-      texDisabled:SetTexCoord(0, 0.625, 0, 0.6875)
+      addonData.buttons[i].Button.tex:SetTexture("Interface/Buttons/UI-Panel-Button-Up")
+      addonData.buttons[i].Button.tex:SetTexCoord(0, 0.625, 0, 0.6875)
+      addonData.buttons[i].Button.texHighlight:SetTexture("Interface/Buttons/UI-Panel-Button-Highlight")
+      addonData.buttons[i].Button.texHighlight:SetTexCoord(0, 0.625, 0, 0.6875)
+      addonData.buttons[i].Button.texPushed:SetTexture("Interface/Buttons/UI-Panel-Button-Down")
+      addonData.buttons[i].Button.texPushed:SetTexCoord(0, 0.625, 0, 0.6875)
+      addonData.buttons[i].Button.texDisabled:SetTexture("Interface/Buttons/UI-Panel-Button-Disabled")
+      addonData.buttons[i].Button.texDisabled:SetTexCoord(0, 0.625, 0, 0.6875)
     else
       addonData.buttons[i].Button:ClearAllPoints()
       addonData.buttons[i].Button:SetWidth(bw - 30)
       addonData.buttons[i].Button:SetHeight(bw - 30)
       addonData.buttons[i].Button:SetFrameLevel(100)
       -- icon
-      icon = addonData.buttons[i].Button:CreateTexture()
+      addonData.buttons[i].Button.icon = addonData.buttons[i].Button:CreateTexture()
+
       if i == 38 then
-        tex:SetTexture("Interface/Buttons/UI-QuickSlot2")
-        tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
-        texPushed:SetTexture("Interface/Buttons/UI-QuickSlot")
-        texPushed:SetTexCoord(0, 1, 0, 1)
-        texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
-        texDisabled:SetTexCoord(0, 1, 0, 1)
-        texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
-        texHighlight:SetTexCoord(0, 1, 0, 1)
-        icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
-        icon:SetTexCoord(0, 1, 0, 1)
-        icon:SetAllPoints()
+        addonData.buttons[i].Button.tex:SetTexture("Interface/Buttons/UI-QuickSlot2")
+        addonData.buttons[i].Button.tex:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+        addonData.buttons[i].Button.texPushed:SetTexture("Interface/Buttons/UI-QuickSlot")
+        addonData.buttons[i].Button.texPushed:SetTexCoord(0, 1, 0, 1)
+        addonData.buttons[i].Button.texDisabled:SetTexture("Interface/Buttons/UI-QuickSlotRed")
+        addonData.buttons[i].Button.texDisabled:SetTexCoord(0, 1, 0, 1)
+        addonData.buttons[i].Button.texHighlight:SetTexture("Interface/Buttons/UI-QuickSlot-Depress")
+        addonData.buttons[i].Button.texHighlight:SetTexCoord(0, 1, 0, 1)
+        addonData.buttons[i].Button.icon:SetTexture("Interface/ICONS/Spell_Shadow_Twilight")
+        addonData.buttons[i].Button.icon:SetTexCoord(0, 1, 0, 1)
+        addonData.buttons[i].Button.icon:SetAllPoints()
       else
-        icon:SetAllPoints()
+        addonData.buttons[i].Button.icon:SetAllPoints()
 
         -- animation move and shrink
         local button = addonData.buttons[39].Button
@@ -1198,6 +1221,7 @@ local summon = {
           if addonData.summon.shrunk then
             button:SetWidth(bw - 30)
             button:SetHeight(bw - 30)
+            button:ClearAllPoints()
             button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
           end
         end)
@@ -1206,40 +1230,41 @@ local summon = {
           if not addonData.summon.shrunk then
             button:SetWidth((bw - 30)/2)
             button:SetHeight((bw - 30)/2)
+            button:ClearAllPoints()
             button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", 40, 15)
             addonData.summon.shrunk = true
           else
             button:SetWidth(bw - 30)
             button:SetHeight(bw - 30)
+            button:ClearAllPoints()
             button:SetPoint("TOPLEFT","SteaSummonFrame","TOPLEFT", -10, 10)
             addonData.summon.shrunk = false
           end
         end)
         button.shrink.anim = button.shrink:CreateAnimation("Scale")
-        button.shrink.anim:SetFromScale(1, 1)
-        button.shrink.anim:SetToScale(0.33, 0.33)
+        button.shrink.anim:SetScale(1, 1)
         button.shrink.anim:SetDuration(0.8)
         button.shrink.anim:SetSmoothing("IN")
         button.shrink.anim2 = button.shrink:CreateAnimation("Translation")
         button.shrink.anim2:SetOffset(40, 15)
         button.shrink.anim2:SetDuration(0.8)
         button.shrink.anim2:SetSmoothing("IN")
-        button.icon = icon
+        button.icon = addonData.buttons[i].Button.icon
         addonData.buttons[i].Button:SetFrameLevel(101)
       end
     end
 
-    tex:SetAllPoints()
-    addonData.buttons[i].Button:SetNormalTexture(tex)
+    addonData.buttons[i].Button.tex:SetAllPoints()
+    addonData.buttons[i].Button:SetNormalTexture(addonData.buttons[i].Button.tex)
 
-    texHighlight:SetAllPoints()
-    addonData.buttons[i].Button:SetHighlightTexture(texHighlight)
+    addonData.buttons[i].Button.texHighlight:SetAllPoints()
+    addonData.buttons[i].Button:SetHighlightTexture(addonData.buttons[i].Button.texHighlight)
 
-    texPushed:SetAllPoints()
-    addonData.buttons[i].Button:SetPushedTexture(texPushed)
+    addonData.buttons[i].Button.texPushed:SetAllPoints()
+    addonData.buttons[i].Button:SetPushedTexture(addonData.buttons[i].Button.texPushed)
 
-    texDisabled:SetAllPoints()
-    addonData.buttons[i].Button:SetDisabledTexture(texDisabled)
+    addonData.buttons[i].Button.texDisabled:SetAllPoints()
+    addonData.buttons[i].Button:SetDisabledTexture(addonData.buttons[i].Button.texDisabled)
 
     addonData.buttons[i].Button:RegisterForClicks("LeftButtonUp")
     addonData.buttons[i].Button:SetAttribute("type", "macro");
@@ -1247,12 +1272,12 @@ local summon = {
 
     if i < 38 then -- last button we use for next summon, so don't want these
       --- flare
-      addonData.buttons[i].flare = CreateFrame("Frame", "SteaSummonFlare"..i, parent)
+      addonData.buttons[i].flare = CreateFrame("Frame", "SteaSummonFlare"..i, parent, BackdropTemplateMixin and "BackdropTemplate")
       addonData.buttons[i].flare:SetHeight(bh + hpad)
       addonData.buttons[i].flare:SetPoint("TOPLEFT","SteaSummonButtonFrame","TOPLEFT", 2,-((i-1)*(bh)+(hpad/2)))
       --addonData.buttons[i].flare:SetPoint("TOPRIGHT","SteaSummonButtonFrame","TOPRIGHT", 0,-(((i-1)*bh)+(hpad/2)))
       addonData.buttons[i].flare:SetWidth(320)
-      addonData.buttons[i].flare.tex = addonData.buttons[i].flare:CreateTexture(nil, "BACKGROUND")
+      addonData.buttons[i].flare.tex = addonData.buttons[i].flare:CreateTexture(nil, "BACKGROUND",nil,0)
       addonData.buttons[i].flare.tex:SetAllPoints()
       addonData.buttons[i].flare.tex:SetColorTexture(1, 1, 1, 1)
       addonData.buttons[i].flare.tex:SetBlendMode("MOD")
@@ -1282,7 +1307,7 @@ local summon = {
       addonData.buttons[i].Cancel:SetPoint("TOPLEFT","SteaSummonButtonFrame","TOPLEFT", 10,-(((i-1)*bh)+hpad))
 
       --- Wait Time
-      addonData.buttons[i].Time = CreateFrame("Frame", "SteaSummonWaitTime"..i, addonData.buttonFrame)
+      addonData.buttons[i].Time = CreateFrame("Frame", "SteaSummonWaitTime"..i, addonData.buttonFrame, BackdropTemplateMixin and "BackdropTemplate")
       addonData.buttons[i].Time:SetWidth(bw)
       addonData.buttons[i].Time:SetHeight(bh)
       addonData.buttons[i].Time:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 108,-(((i-1)*bh)+hpad))
@@ -1304,7 +1329,7 @@ local summon = {
       addonData.buttons[i].Time["FS"]:SetText(string.format(SecondsToTime(0)))
 
       --- Priority
-      addonData.buttons[i].Priority = CreateFrame("Frame", "SteaSummonPriority"..i, addonData.buttonFrame)
+      addonData.buttons[i].Priority = CreateFrame("Frame", "SteaSummonPriority"..i, addonData.buttonFrame, BackdropTemplateMixin and "BackdropTemplate")
       addonData.buttons[i].Priority:SetWidth(bh)
       addonData.buttons[i].Priority:SetHeight(bh)
       addonData.buttons[i].Priority:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 1,-(((i-1)*bh)+hpad))
@@ -1337,7 +1362,7 @@ local summon = {
       addonData.buttons[i].Priority["FS"]:SetText("N")
 
       --- Status
-      addonData.buttons[i].Status = CreateFrame("Frame", "SteaSummonStatus"..i, addonData.buttonFrame)
+      addonData.buttons[i].Status = CreateFrame("Frame", "SteaSummonStatus"..i, addonData.buttonFrame, BackdropTemplateMixin and "BackdropTemplate")
       addonData.buttons[i].Status:SetWidth(bw)
       addonData.buttons[i].Status:SetHeight(bh)
       addonData.buttons[i].Status:SetPoint("TOPLEFT", addonData.buttonFrame, "TOPLEFT",bw + wpad + 27,-(((i-1)*bh)+hpad))
@@ -1371,8 +1396,8 @@ local summon = {
     if SteaSummonShardIcon then
       local _, itemLink = GetItemInfo(6265) -- "Soul Shard"
       for bag = 0, NUM_BAG_SLOTS do
-        for slot = 1, GetContainerNumSlots(bag) do
-          if(GetContainerItemLink(bag, slot) == itemLink) then
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+          if(C_Container.GetContainerItemLink(bag, slot) == itemLink) then
             count = count + 1
           end
         end
@@ -1515,9 +1540,8 @@ local summon = {
   end,
 
   offline = function(self, player)
-    local offline = not UnitIsConnected(player)
+    local offline = UnitIsConnected(player)
     local rec = self:findWaitingPlayer(player)
-
     if rec then
       local state = ""
       if offline and self:recStatus(rec) ~= "offline" then
@@ -1603,6 +1627,11 @@ local summon = {
 
     if self:isAtDestination() then
       if SteaSummonFrame then
+
+        if not SteaSummonFrame.location or not SteaSummonFrame.destination then
+          self:reConfigureFrames()
+        end
+
         SteaSummonFrame.destination:SetTextColor(0,1,0,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
       end
@@ -1612,6 +1641,9 @@ local summon = {
       end
     else
       if SteaSummonFrame then
+        if not SteaSummonFrame.location or not SteaSummonFrame.destination then
+          self:reConfigureFrames()
+        end
         SteaSummonFrame.destination:SetTextColor(1,1,1,.5)
         SteaSummonFrame.location:SetTextColor(0,1,0,.5)
       end
@@ -1650,6 +1682,11 @@ local summon = {
     if location and location ~= "" and zone and zone ~= "" then
       self.countSummoned = 0
       if SteaSummonFrame then
+
+        if not SteaSummonFrame.destination then
+          self:reConfigureFrames()
+        end
+
         local pat = {["%%zone"] = self.zone, ["%%subzone"] = self.location}
         local s = L["Destination: %subzone, %zone"]
         s = tstring(s, pat)
@@ -1660,6 +1697,9 @@ local summon = {
       end
     else
       if SteaSummonFrame then
+        if not SteaSummonFrame.destination then
+          self:reConfigureFrames()
+        end
         SteaSummonFrame.destination:SetText("")
       end
       self.show = nil

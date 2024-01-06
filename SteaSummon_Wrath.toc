@@ -1,0 +1,25 @@
+## Interface: 30403
+## Title: SteaSummon
+## Notes: One button summoning, shared summoning list...
+## Author: Stea
+## Version: 1.07
+## SavedVariablesPerCharacter: SteaSummonSave, SteaDEBUG, SteaSummonSaveLDB
+## x-SteaSummon-Protocol-version: 0.64
+
+Libs\embeds.xml
+Locale\Locales.xml
+
+debug.lua
+util.lua
+buffs.lua
+settings.lua
+gossip.lua
+optionsgui.lua
+raid.lua
+summon.lua
+monitor.lua
+chat.lua
+alt.lua
+events.lua
+main.lua
+minimap.lua

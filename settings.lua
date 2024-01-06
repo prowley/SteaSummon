@@ -29,6 +29,7 @@ summonWords[20] ="summons ready?"
 summonWords[21] ="summons ready"
 summonWords[22] ="123 summons"
 summonWords[23] ="123 summon"
+summonWords[24] ="[SteaSummon] 123"
 
 settings = {
   init = function(self)
@@ -90,15 +91,15 @@ settings = {
     end
 
     if SteaSummonSave.warlocksAssist == nil then
-      SteaSummonSave.warlocksAssist = true
-      SteaSummonSave.finalLeadership = true
-      SteaSummonSave.assistPlayers = {"Stea", "Stec"}
-      SteaSummonSave.raidLeaders = {"Stea", "Stec"}
-      SteaSummonSave.masterLoot = {"Stea", "Ninja"}
+      SteaSummonSave.warlocksAssist = false
+      SteaSummonSave.finalLeadership = false
+      SteaSummonSave.assistPlayers = {}
+      SteaSummonSave.raidLeaders = {}
+      SteaSummonSave.masterLoot = {}
       SteaSummonSave.autoInviteTriggers = {"inv", "invite"}
-      SteaSummonSave.autoInvite = 1
-      SteaSummonSave.autoAccept = 1
-      SteaSummonSave.delayLeadership = true
+      SteaSummonSave.autoInvite = 0
+      SteaSummonSave.autoAccept = 0
+      SteaSummonSave.delayLeadership = false
       SteaSummonSave.convertToRaid = false
     end
   end,

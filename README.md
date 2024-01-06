@@ -1,10 +1,8 @@
 # SteaSummon
 
+***FAN UPDATE***
+
 WoW Classic addon for warlock raid summoning
-
-## Please Fork this -- need maintainer
-This is usful in classic era, but I don't play classic era.
-
 
 ## New
 

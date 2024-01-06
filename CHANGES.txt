@@ -1,0 +1,36 @@
+
+November 7th, 2023
+FAN UPDATE 
+  * Classic Build Compatibility Wrath
+
+August 26th, 2023
+FAN UPDATE
+* Fixed some lua errors.
+
+August 25th, 2023
+FAN UPDATE
+Author - The Genome Whisperer (Arkaan - Guild Roster Manager creator)
+-- Some additional lua error fixes.
+
+August 24th, 2023
+FAN UPDATE
+Author - The Genome Whisperer (Arkaan - Guild Roster Manager creator)
+-- Compatibility with Classic Era Hardcore
+
+
+    Features
+    
+    * differentiate between alts whispered and not whispered in the alt data field
+    
+    * color coded offline with an alt, and offline and alt whispered in status
+    
+    * made raid chat and whispers that people expect to come from a warlock, come from a warlock in the network if possible, preferring a warlock at summon destination.
+    
+    * added raid leader indicator that also acts as raid lead relinquish button
+    
+    * added invisible button that covers most of the upper right are where the loc/dest text is, now clicking there sets/unsets destination.
+    
+    * made summon reset button/menu option also send raid trigger text in order to be compatible with raids not using steasummon.
+    
+    * Added various tooltips
+
